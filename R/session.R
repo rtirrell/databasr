@@ -98,7 +98,7 @@ Session <- setRefClass('Session',
 	)
 )
 
-#' Evaluate a get query with a temporary connection.
+#' Evaluate a get query with a temporary connection. TODO: we've been warned (by check).
 #' 
 #' @param data the \code{\link{Session}} object associated with this query.
 #' @param expr the query we are executing, a character vector of length one.

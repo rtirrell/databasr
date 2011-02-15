@@ -1,12 +1,12 @@
-compileStatement <- function(value, compiler, parent) {
+compileStatement <- function(value, formatter, parent) {
 	lines <- c()
-	if (!is.null(parent)) lines <- compiler$levelDown()$line(lines, '(', ' ')
-	lines <- c(lines, sapply(value$.children, compile, compiler, value))
-	if (!is.null(parent)) lines <- compiler$levelUp()$line(lines, ')')
+	if (!is.null(parent)) lines <- formatter$levelDown()$line(lines, '(', ' ')
+	lines <- c(lines, sapply(value$.children, compile, formatter, value))
+	if (!is.null(parent)) lines <- formatter$levelUp()$line(lines, ')')
 	return(str_c(unlist(lines), collapse = '\n'))
 }
 
-compileChildren <- function(compiler, value, include = NULL, exclude = NULL) {
+compileChildren <- function(formatter, value, include = NULL, exclude = NULL) {
 	if (!is.null(include)) {
 		indices <- include
 	} else {
@@ -15,18 +15,18 @@ compileChildren <- function(compiler, value, include = NULL, exclude = NULL) {
 			indices <- indices[-exclude]
 	}
 	
-	return(unlist(sapply(value$.children[indices], compile, compiler, value)))
+	return(unlist(sapply(value$.children[indices], compile, formatter, value)))
 }
 
 
 
-compile <- function(value, compiler, parent) {
+compile <- function(value, formatter, parent) {
 	value.class <- class(value)
 	function.name <- str_c(
 		'compile', toupper(substring(value.class, 1, 1)), substring(value.class, 2)
 	)
 	#print(str_c('Compile function name: ', function.name))
-	get(function.name)(value, compiler, parent)
+	get(function.name)(value, formatter, parent)
 }
 
 formatTuple <- function(value, quote = FALSE) {
@@ -42,7 +42,10 @@ countCharacter <- function(character, ...) {
 	}))
 }
 
-Compiler <- setRefClass('Compiler',
+Formatter <- setRefClass('Formatter',
+	fields = c(
+		'level'
+	),
 	contains = c(
 		'DatabasrObject'
 	),
@@ -50,8 +53,7 @@ Compiler <- setRefClass('Compiler',
 	methods = list(
 		initialize = function() {
 			callSuper()
-			setOptions(level = 0)
-			return(.self)
+			initFields(level = 0)
 		},
 		
 		getCounter = function(counter.name) {
@@ -61,7 +63,7 @@ Compiler <- setRefClass('Compiler',
 		},
 		
 		getPadding = function() {
-			return(str_c(str_c(rep('\t', getOption('level')), collapse = '')))
+			return(str_c(str_c(rep("  ", level), collapse = "")))
 		},
 		
 		line = function(lines, line, padding) {
@@ -76,13 +78,13 @@ Compiler <- setRefClass('Compiler',
 		},
 		
 		levelUp = function() {
-			setOptions(level = getOption('level') - 1)
-			return(.self)
+			level <<- level - 1
+			.self
 		},
 		
 		levelDown = function() {
-			setOptions(level = getOption('level') + 1)
-			return(.self)
+			level <<- level + 1
+			.self
 		},
 		
 		finish = function(lines) {
@@ -92,3 +94,126 @@ Compiler <- setRefClass('Compiler',
 		}
 	)
 )
+
+#' Class implementing DBMS-specific compilation behavior (syntax and formatting).
+#' If a need arises to add behavior between preparation and this step, we'll add a
+#' database-specific preparation step that follows the database-agnostic step, making the workflow
+#' composition, agnostic preparation, specific preparation, compilation/formatting.
+Compiler <- setRefClass('Compiler',
+	fields = c(
+		'statement',
+		'formatter',
+		'identifier.collapse',
+		'identifier.quote'
+	),
+	contains = c(
+		'DatabasrObject'
+	),
+	methods = list(
+		initialize = function(statement = NULL, formatter = NULL) {
+			initFields(
+				statement = statement, 
+				formatter = formatter,
+				identifier.collapse = NULL,
+				identifier.quote = NULL
+			)
+			
+			identifier.base <<- str_c(identifier.quote, "%s", identifier.quote)
+			callSuper()
+		},
+		
+		prepareIdentifier = function(...) {
+			args <- paste(list(...), collapse = '\n')
+			str_c(
+				sprintf(identifier.base, unlist(str_split(args, fixed('.')))), 
+				collapse = identifier.collapse
+			)
+		},
+		
+		##
+		# R literals.
+		##
+		compileInteger = function(value) {
+			if (length(value) > 1) formatTuple(value)
+			else value
+		},
+		
+		compileNumeric = function(value) {
+			if (length(value) > 1) formatTuple(value)
+			else value
+		},
+		
+		compileCharacter = function(value) {
+			if (length(value) > 1) formatTuple(value, TRUE)
+			else sprintf("'%s'", value)
+		},
+		
+		compileLogical = function(value) {
+			if (is.na(value)) 'NULL'
+			else if (value) 'TRUE'
+			else 'FALSE'
+		},
+		
+		##
+		# Atomic elements.
+		## 
+		compileTable = function(value) {
+			prepareIdentifier(value$getName())
+		},
+		
+		compileField = function(value) {
+		},
+		
+		##
+		# Clauses.
+		##
+		compileSelectClause = function(value) {
+		},
+		
+		compileFromClause = function(value) {
+		},
+		
+		##
+		# Statements.
+		## 
+		compileSelectStatement = function(value) {
+			lines <- c()
+			if (!is.null(parent)) lines <- formatter$levelDown()$line(lines, '(', ' ')
+			lines <- c(lines, sapply(value$.children, compile, formatter, value))
+			if (!is.null(parent)) lines <- formatter$levelUp()$line(lines, ')')
+			str_c(unlist(lines), collapse = '\n')
+		}
+		
+	)
+)
+
+MySQLCompiler <- setRefClass('MySQLCompiler',
+	contains = c(
+		'Compiler'
+	),
+	methods = list(
+		initialize = function() {
+			initFields(
+				identifier.collapse = ".",
+				identifier.quote = "`"
+			)
+			callSuper()
+		}
+	)
+)
+
+PostgresCompiler <- setRefClass('PostgresCompiler',
+	contains = c(
+		'Compiler'
+	),
+	methods = list(
+		initialize = function() {
+			initFields(
+				identifier.collapse = ".",
+				identifier.quote = '"'
+			)
+			callSuper()
+		}
+	)
+)
+			

@@ -1,11 +1,23 @@
 ClauseElement <- setRefClass('ClauseElement',
 	contains = c(
 		'SQLObject'
+	),
+	methods = list(
+		initialize = function() {
+			callSuper()
+		}
 	)
 )
 
 Scalar <- setRefClass('Scalar',
-	contains = c('ClauseElement')
+	contains = c(
+		'ClauseElement'
+	),
+	methods = list(
+		initialize = function() {
+			callSuper()
+		}
+	)
 )
 
 setMethod('%in%', c('Scalar', 'ANY'), function(x, table) {
@@ -63,6 +75,7 @@ setMethod('unique', 'Scalar', function(x) {
 	Function$new('DISTINCT', x)
 })
 
+#' A \code{\link{length}} method to support generation of 'COUNT' functions.
 setMethod('length', 'Scalar', function(x) {
 	Function$new('COUNT', x)
 })
@@ -75,7 +88,8 @@ setMethod('toupper', 'Scalar', function(x) {
 	Function$new('UPPER', x)
 })
 
-#setMethod('str_c', c('Scalar', 'ANY'), function(..., sep = '', collapse = NULL) {
+# TODO: haven't yet decided how to work with concat. Probably using paste.
+#setMethod('paste', c('Scalar'), function(x, ..., sep = '', collapse = NULL) {
 #	if (sep == '') Function$new(func = 'CONCAT', ...)
 #	Function$new('CONCACT_WS', sep, ...)
 #})

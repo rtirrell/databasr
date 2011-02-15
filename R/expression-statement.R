@@ -30,28 +30,31 @@ UpdateStatement <- setRefClass('UpdateStatement',
 			return(.self)
 		},
 		update = function(table) {
-			.children$update$.children[[1]] <<- table
-			return(.self)
+			.children$update$insertChild(table, 1)
 		},
+		
 		set = function(...) {
 			.children$update$addChildren(...)
 			return(.self)
 		},
+		
 		where = function(...) {
 			.children$where$addChildren(...)
 			return(.self)
 		},
 		SQL = function() {
-			compiler <- Compiler$new()
-			lines <- compile(.self, compiler, NULL)
-			statement <- compiler$finish(lines)
+			formatter <- Formatter$new()
+			lines <- compile(.self, formatter, NULL)
+			statement <- formatter$finish(lines)
 			#debug(logger, statement)
-			return(compiler$finish(lines))
+			formatter$finish(lines)
 		}
 	)
 )
 
 
+# TODO: consider closure function to do the dumb child-adding work. Also, support named children
+# and handling of setting parents.
 SelectStatement <- setRefClass('SelectStatement',
 	contains = c(
 		'Statement'
@@ -161,13 +164,14 @@ SelectStatement <- setRefClass('SelectStatement',
 		
 		SQL = function() {
 			prepare()
-			compiler <- Compiler$new()
-			lines <- compile(.self, compiler, NULL)
-			statement <- compiler$finish(lines)
-			#debug(logger, statement)
+			
+			formatter <- Formatter$new()
+			lines <- compile(.self, formatter, NULL)
+			statement <- formatter$finish(lines)
+			
 			restore()
 			
-			return(statement)
+			statement
 		}
 	)
 )

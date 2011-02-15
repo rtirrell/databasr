@@ -37,29 +37,21 @@ SQLObject <- setRefClass('SQLObject',
 	methods = list(
 		initialize = function(parent = NULL) {
 			initFields(.parent = parent, .children = list())
-			return(callSuper())
+			callSuper()
 		},
 		
 		##
 		# Tree-related functionality.
 		##
 		hasChildren = function() {
-			return(length(.children) != 0)
-		},
-		
-		isEmpty = function() {
-			return(!hasChildren())
-		},
-		
-		setParent = function(parent) {
-			.parent <<- parent
-			return(.self)
+			length(.children) != 0
 		},
 		
 		findChildren = function(class) {
 			class.children <- list()	
 			for (child in .children) {
-				# Should this be an either-or situation?
+				# TODO: should this be an either-or situation? As of now I can't think of a use-case for
+				# needing every child where a given class may contain other objects of that class.
 				if (inherits(child, class)) 
 					class.children <- c(class.children, child)
 				else if (inherits(child, 'SQLObject') && child$hasChildren()) 
@@ -68,27 +60,57 @@ SQLObject <- setRefClass('SQLObject',
 			return(class.children)
 		},
 		
-		insertChild = function(child, where = length(.children)) {
-			if (missing(where))
-				where <- length(.children)
-			.children <<- append(.children, child, after = where - 1) 
+		setParent = function(parent) {
+			.parent <<- parent
+			.self
 		},
 		
+		
+		#' Insert a child object into this object's \code{.children} at a given location.
+		#' 
+		#' @param child object to insert
+		#' @param where location to insert at (pushing other children back)
+		#' @return \code{.self}
+		insertChild = function(child, where = length(.children)) {
+			.children <<- append(.children, child, after = where - 1) 
+			if (inherits(child, 'SQLObject')) child$setParent(.self)
+			.self
+		},
+		
+		#' Add a child object to this object's \code{.children} at the end, with an optional name.
+		#' 
+		#' @param child object to insert
+		#' @param name name of the object
+		#' @return \code{.self}
+		addChild = function(child, name = NULL) {
+			if (is.null(name)) .children <<- c(.children, child)
+			else .children[[name]] <<- child
+			if (inherits(child, "SQLObject")) child$setParent(.self)
+			.self
+		},
+			
+		
 		addChildren = function(...) {
-			for (child in list(...)) {
-				.children <<- c(.children, child)
-				if (inherits(child, 'SQLObject')) child$setParent(.self)
-			}
+			args <- list(...)
+			arg.names <- names(args)
+			for (i in seq_along(args)) addChild(args[[i]], arg.names[[i]])
 			.self
 		},
 		
 		prepare = function() {
 			for (child in .children) 
 				if (inherits(child, 'SQLObject')) child$prepare()
-			return(.self)
+			.self
 		},
 		
-		propagateOptions = function(...) {
+		#' Propagate options up or down the tree.
+		#' 
+		#' Note that \code{"all"} starts by setting to the root, at which point a full and mildly
+		#' redundant downward propagation begins.
+		#' 
+		#' @param ... options to set on all successors or predecessors or both.
+		#' @param to direction toward which to set these options.
+		propagateOptions = function(..., to = "children") {
 			setOptions(...)
 			for (child in .children) {
 				child$setOptions(...)
@@ -99,3 +121,13 @@ SQLObject <- setRefClass('SQLObject',
 		}
 	)
 )
+
+#' Capitalize a string.
+#' 
+#' @param value a character vector of length one
+#' @return the capitalized
+#' @examples 
+#' capitalize("hello world") # "Hello world"
+capitalize <- function(value) {
+	str_c(toupper(str_sub(value, 1, 1)), str_sub(value, 2))
+}

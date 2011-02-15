@@ -61,23 +61,23 @@ SelectClause <- setRefClass('SelectClause',
 			
 			for (child in list(...)) {
 				if (inherits(child, 'Table')) {
-					callSuper(child$.fields)
+					addChild(child$.fields)
 					addTable(child)
 				} else if (inherits(child, 'Field')) {
-					callSuper(child)
+					addChild(child)
 					addTable(child$table)
 				} else {
+					# Otherwise, child is some function or operator element.
 					child.fields <- child$findChildren('Field')
-					for (field in child.fields) {
-						addTable(field$table)
-					}
-					callSuper(child)
+					for (field in child.fields) addTable(field$table)
+					addChild(child)
 				}
 			}
 			
 			return(.self)
 		},
 		
+		#' If field names are unique, prefer using shorter aliases.
 		prepare = function() {
 			field.names <- unlist(sapply(findChildren('Field'), function(c) c$name))
 			if (length(field.names) == length(unique(field.names))) setOptions(short.alias = TRUE)

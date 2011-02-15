@@ -3,6 +3,7 @@ databasr is a database abstraction and ORM for R.
 Features currently supported to some degree on **MySQL** include:
 
 * An expressive syntax using standard R functions wherever possible.
+* Proxying of results and pseudointelligent handling of database sessions.
 * Table introspection and, optionally, 'live' updates to tables.
 
 ## Status
@@ -36,3 +37,5 @@ databasr builds on these as much as possible, and as such, we are aiming at what
 * Results of `SELECT` statements are represented by `Result` objects, which perform some limited
   (and perhaps troublesome) pseudo-intelligent fetch and update/insert operations (in-progress to
   some degree).
+
+### A day in the life of a query

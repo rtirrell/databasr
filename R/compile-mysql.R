@@ -19,121 +19,121 @@ compileCreateTableStatement <- function(statement) {
 ##
 # Clauses.
 #
-compileSelectClause <- function(value, compiler, parent) {
-	if (!is.null(value$getOption('distinct'))) lines <- compiler$line('SELECT DISTINCT')
-	else lines <- compiler$line('SELECT')
+compileSelectClause <- function(value, formatter, parent) {
+	if (!is.null(value$getOption('distinct'))) lines <- formatter$line('SELECT DISTINCT')
+	else lines <- formatter$line('SELECT')
 	if (!is.null(value$getOption('count'))) {
-		lines <- compiler$levelDown()$line(lines, 'COUNT(*)')
-		compiler$levelUp()
+		lines <- formatter$levelDown()$line(lines, 'COUNT(*)')
+		formatter$levelUp()
 		return(lines)
 	}
-	children <- str_c(sapply(value$.children, compile, compiler, value), collapse = ', ')
-	lines <- compiler$levelDown()$line(lines, children)
-	compiler$levelUp()
+	children <- str_c(sapply(value$.children, compile, formatter, value), collapse = ', ')
+	lines <- formatter$levelDown()$line(lines, children)
+	formatter$levelUp()
 	return(lines)
 }
 
-compileFromClause <- function(value, compiler, parent) {
-	lines <- compiler$line('FROM')
-	children <- str_c(sapply(value$.children, compile, compiler, value), collapse = ', ')
-	lines <- compiler$levelDown()$line(lines, children)
-	compiler$levelUp()
+compileFromClause <- function(value, formatter, parent) {
+	lines <- formatter$line('FROM')
+	children <- str_c(sapply(value$.children, compile, formatter, value), collapse = ', ')
+	lines <- formatter$levelDown()$line(lines, children)
+	formatter$levelUp()
 	return(lines)
 }
 
-compileUpdateClause <- function(value, compiler, parent) {
-	lines <- compiler$line('UPDATE')
-	lines <- compiler$levelDown()$line(lines, compile(value$.children[[1]], compiler, parent))
+compileUpdateClause <- function(value, formatter, parent) {
+	lines <- formatter$line('UPDATE')
+	lines <- formatter$levelDown()$line(lines, compile(value$.children[[1]], formatter, parent))
 	
-	lines <- compiler$levelUp()$line(lines, 'SET')
-	children <- str_c(sapply(value$.children[-1], compile, compiler, parent), collapse = ', ')
-	lines <- compiler$levelDown()$line(lines, children)
-	compiler$levelUp()
+	lines <- formatter$levelUp()$line(lines, 'SET')
+	children <- str_c(sapply(value$.children[-1], compile, formatter, parent), collapse = ', ')
+	lines <- formatter$levelDown()$line(lines, children)
+	formatter$levelUp()
 	return(lines)
 }
 
-compileWhereClause <- function(value, compiler, parent) {
-	lines <- compiler$line('WHERE')
-	children <- str_c(compileChildren(compiler, value), collapse = ' ')
-	lines <- compiler$levelDown()$line(lines, children)
-	compiler$levelUp()
+compileWhereClause <- function(value, formatter, parent) {
+	lines <- formatter$line('WHERE')
+	children <- str_c(compileChildren(formatter, value), collapse = ' ')
+	lines <- formatter$levelDown()$line(lines, children)
+	formatter$levelUp()
 	return(lines)
 }
 
-compileJoinClause <- function(value, compiler, parent) {
+compileJoinClause <- function(value, formatter, parent) {
 	if (value$getOption('type') == 'NATURAL JOIN') {
-		lines <- compiler$line('NATURAL JOIN')
-		lines <- compiler$line(lines, compileChildren(value, compiler, include = 1))
+		lines <- formatter$line('NATURAL JOIN')
+		lines <- formatter$line(lines, compileChildren(value, formatter, include = 1))
 	} 
 	
 	if (value$getOption('type') == 'JOIN ON') {
-		lines <- compiler$line('JOIN')
-		lines <- compiler$levelDown()$line(lines, compileChildren(compiler, value, include = 1))
-		lines <- compiler$levelUp()$line(lines, 'ON')
-		lines <- compiler$levelDown()$line(
-			lines, compileChildren(compiler, value, exclude = 1)
+		lines <- formatter$line('JOIN')
+		lines <- formatter$levelDown()$line(lines, compileChildren(formatter, value, include = 1))
+		lines <- formatter$levelUp()$line(lines, 'ON')
+		lines <- formatter$levelDown()$line(
+			lines, compileChildren(formatter, value, exclude = 1)
 		)
-		compiler$levelUp()
+		formatter$levelUp()
 		return(lines)	
 	} 
 	
 	if (value$getOption('type') == 'JOIN USING') {
-		lines <- compiler$line('JOIN')
-		lines <- compiler$levelDown()$line(lines, compileChildren(compiler, value, include = 1))
-		lines <- compiler$levelUp()$line(lines, 'USING (')
-		lines <- compiler$levelDown()$line(
-			lines, compileChildren(compiler, value, exclude = 1)
+		lines <- formatter$line('JOIN')
+		lines <- formatter$levelDown()$line(lines, compileChildren(formatter, value, include = 1))
+		lines <- formatter$levelUp()$line(lines, 'USING (')
+		lines <- formatter$levelDown()$line(
+			lines, compileChildren(formatter, value, exclude = 1)
 		)
-		lines <- compiler$levelUp()$line(lines, ')')
+		lines <- formatter$levelUp()$line(lines, ')')
 		return(lines)	
 	}
 }
 
-compileGroupClause <- function(value, compiler, parent) {
-	lines <- compiler$line('GROUP BY')
-	lines <- compiler$addToLine(lines, str_c(compileChildren(compiler, value), collapse = ', '))
+compileGroupClause <- function(value, formatter, parent) {
+	lines <- formatter$line('GROUP BY')
+	lines <- formatter$addToLine(lines, str_c(compileChildren(formatter, value), collapse = ', '))
 	return(lines)
 }
 
-compileHavingClause <- function(value, compiler, parent) {
-	lines <- compiler$line('HAVING')
-	children <- str_c(compileChildren(compiler, value), collapse = ' ')
-	lines <- compiler$levelDown()$line(lines, children)
-	compiler$levelUp()
+compileHavingClause <- function(value, formatter, parent) {
+	lines <- formatter$line('HAVING')
+	children <- str_c(compileChildren(formatter, value), collapse = ' ')
+	lines <- formatter$levelDown()$line(lines, children)
+	formatter$levelUp()
 	return(lines)
 }
 
-compileOrderClause <- function(value, compiler, parent) {
-	lines <- compiler$line('ORDER BY')
-	lines <- compiler$addToLine(lines, str_c(compileChildren(compiler, value), collapse = ', '))
+compileOrderClause <- function(value, formatter, parent) {
+	lines <- formatter$line('ORDER BY')
+	lines <- formatter$addToLine(lines, str_c(compileChildren(formatter, value), collapse = ', '))
 	return(lines)
 }
 
-compileLimitClause <- function(value, compiler, parent) {
-	lines <- compiler$line('LIMIT')
-	lines <- compiler$addToLine(lines, str_c(compileChildren(compiler, value)))
+compileLimitClause <- function(value, formatter, parent) {
+	lines <- formatter$line('LIMIT')
+	lines <- formatter$addToLine(lines, str_c(compileChildren(formatter, value)))
 	return(lines)
 }
 
-compileOffsetClause <- function(value, compiler, parent) {
-	lines <- compiler$line('OFFSET')
-	lines <- compiler$addToLine(lines, str_c(compileChildren(compiler, value)))
+compileOffsetClause <- function(value, formatter, parent) {
+	lines <- formatter$line('OFFSET')
+	lines <- formatter$addToLine(lines, str_c(compileChildren(formatter, value)))
 	return(lines)
 }
 
-compileClauseList <- function(value, compiler, parent) {
-	sapply(value$.children, compile, compiler, value)
+compileClauseList <- function(value, formatter, parent) {
+	sapply(value$.children, compile, formatter, value)
 }
 
 ##
 # Elements.
 ##
 
-compileTable <- function(value, compiler, parent) {
+compileTable <- function(value, formatter, parent) {
 	return(prepareIdentifier(value$getName()))
 }
 
-compileField <- function(value, compiler, parent) {
+compileField <- function(value, formatter, parent) {
 	# If the field is a top-level element in a JOIN, we're seeing USING, and thus need only the name
 	# of this field.
 	if (inherits(parent, 'JoinClause')) name <- prepareIdentifier(value$name)
@@ -151,61 +151,61 @@ compileField <- function(value, compiler, parent) {
 	else return(name)
 }
 
-compileFunction <- function(value, compiler, parent) {
+compileFunction <- function(value, formatter, parent) {
 	func <- str_c(value$func, '(')
-	func <- str_c(func, str_c(sapply(value$.children, compile, compiler, value), collapse = ', '), ')')
+	func <- str_c(func, str_c(sapply(value$.children, compile, formatter, value), collapse = ', '), ')')
 	
 	if (!is.null(value$alias)) {
 		alias <- sprintf("`%s`", value$alias)
 	} else {
 		fields <- value$findChildren('Field')
 		if (length(fields) == 1) alias <- sprintf("`%s_%s`", tolower(value$func), fields[[1]]$name)
-		else alias <- sprintf("`%s_%d`", tolower(value$func), compiler$getCounter(value$func))
+		else alias <- sprintf("`%s_%d`", tolower(value$func), formatter$getCounter(value$func))
 	}
 	
 	func <- str_c(func, 'AS', alias, sep = ' ')
 	return(func)
 }
 	
-compilePostfixOperator <- function(value, compiler, parent) {
-	return(str_c(compile(value$.children[[1]], compiler, parent), value$operator, sep = ' '))
+compilePostfixOperator <- function(value, formatter, parent) {
+	return(str_c(compile(value$.children[[1]], formatter, parent), value$operator, sep = ' '))
 }
 
-compileBinaryOperator <- function(value, compiler, parent) {
+compileBinaryOperator <- function(value, formatter, parent) {
 	return(str_c(
-		compile(value$.children[[1]], compiler, parent),
+		compile(value$.children[[1]], formatter, parent),
 		value$operator,
-		compile(value$.children[[2]], compiler, parent),
+		compile(value$.children[[2]], formatter, parent),
 		sep = ' '
 	))
 }
 
-compileNegatableBinaryOperator <- function(value, compiler, parent) {
+compileNegatableBinaryOperator <- function(value, formatter, parent) {
 	operator <- value$operator
 	if (value$getOption('negated')) {
 		if (operator == '==') value$operator <- "!="
 		if (operator == 'IN') value$operator <- "NOT IN"
 		if (operator == 'IS') value$operator <- "IS NOT"
 	}
-	return(compileBinaryOperator(value, compiler, parent))
+	return(compileBinaryOperator(value, formatter, parent))
 }
 
 ##
 # R literals.
 #
-compileCharacter <- function(value, compiler, parent) {
+compileCharacter <- function(value, formatter, parent) {
 	if (length(value) > 1) return(formatTuple(value, TRUE))
-	else return(sprintf('"%s"', value))
+	else return(sprintf("'%s'", value))
 }
 
-compileInteger <- function(value, compiler, parent) {
+compileInteger <- function(value, formatter, parent) {
 	if (length(value) > 1) return(formatTuple(value))
 	else return(as.character(value))
 }
 
 compileNumeric <- compileInteger
 
-compileLogical <- function(value, compiler, parent) {
+compileLogical <- function(value, formatter, parent) {
 	if (is.na(value)) return('NULL')
 	else if (value) return('TRUE')
 	else return('FALSE')
