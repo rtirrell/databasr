@@ -1,6 +1,7 @@
 # databasr
 databasr is a database abstraction and ORM for R.
 Features currently supported to some degree on **MySQL** include:
+
 * An expressive syntax using standard R functions wherever possible.
 * Table introspection and, optionally, 'live' updates to tables.
 
