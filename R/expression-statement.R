@@ -16,7 +16,6 @@ Statement <- setRefClass('Statement',
 )
 
 
-# Passing self to children during compilation. Wrong?
 UpdateStatement <- setRefClass('UpdateStatement',
 	contains = c(
 		'Statement'
@@ -53,7 +52,6 @@ UpdateStatement <- setRefClass('UpdateStatement',
 )
 
 
-# TODO: the whole prepare if not NULL model is stupid.
 SelectStatement <- setRefClass('SelectStatement',
 	contains = c(
 		'Statement'
@@ -134,8 +132,11 @@ SelectStatement <- setRefClass('SelectStatement',
 			return(.self)
 		},
 		
-		# prepare is database-agnostic preparation - dbPrepare is database-specific preparation.
-		# For dbPrepare, some sort of rider will tag along.
+		# TODO: potential design decision here. prepare is database-agnostic preparation.
+		# Could also add, dbPrepare for database-specific preparation. # For dbPrepare, some sort 
+		# of rider responsible for database-specific behavior tags along as we walk down the tree.
+		# Also want to consider interaction with compile* functions and their role in schemes
+		# specific to any database.
 		prepare = function() {
 			unprepared.children <<- .children
 			prepared.children <- list()
@@ -158,7 +159,6 @@ SelectStatement <- setRefClass('SelectStatement',
 			return(result)
 		},
 		
-		# Also add a dbPrepare for database-specific stuff?
 		SQL = function() {
 			prepare()
 			compiler <- Compiler$new()

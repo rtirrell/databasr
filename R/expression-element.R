@@ -9,68 +9,66 @@ Scalar <- setRefClass('Scalar',
 )
 
 setMethod('%in%', c('Scalar', 'ANY'), function(x, table) {
-	# Nested SELECT.
-	if (inherits(table, 'Field')) table <- SelectStatement$new(NULL, table$distinct())
-	NegatableBinaryOperator$new(operator = 'IN', left = x, right =  table)
+	NegatableBinaryOperator$new("IN", x, table)
 })
 
 setMethod('+', c('Scalar', 'ANY'), function(e1, e2) {
-	if (missing(e2)) PostfixOperator$new(operator = "ASC", left = e1)
-	else BinaryOperator$new(operator = "+", left = e1, right = e2)
+	if (missing(e2)) PostfixOperator$new("ASC", e1)
+	else BinaryOperator$new("+", e1, e2)
 })
 
 setMethod('-', c('Scalar', 'ANY'), function(e1, e2) {
-	if (missing(e2)) PostfixOperator$new(operator = "DESC", left = e1)
-	else BinaryOperator$new(operator = "-", left = e1, right = e2)
+	if (missing(e2)) PostfixOperator$new("DESC", e1)
+	else BinaryOperator$new("-", e1, e2)
 })
 
 setMethod('<', c('Scalar', 'ANY'), function(e1, e2) {
-	BinaryOperator$new(operator = "<", left = e1, right = e2)
+	BinaryOperator$new("<", e1, e2)
 })
 
 setMethod('>', c('Scalar', 'ANY'), function(e1, e2) {
-	BinaryOperator$new(operator = ">", left = e1, right = e2)
+	BinaryOperator$new(">", e1, e2)
 })
 
 setMethod('==', c('Scalar', 'ANY'), function(e1, e2) {
-	NegatableBinaryOperator$new(operator = "=", left = e1, right = e2)
+	NegatableBinaryOperator$new("=", e1, e2)
 })
 
 setMethod('!=', c('Scalar', 'ANY'), function(e1, e2) {
-	operator <- NegatableBinaryOperator$new(operator = '==', left = e1, right = e2)
+	operator <- NegatableBinaryOperator$new('==', e1, e2)
 	operator$setOptions(negated = TRUE)
 	operator
 })
 
 setMethod('&', c('Scalar', 'ANY'), function(e1, e2) {
-	BinaryOperator$new(operator = "AND", left = e1, right = e2)
+	BinaryOperator$new("AND", e1, e2)
 })
 
 setMethod('|', c('Scalar', 'ANY'), function(e1, e2) {
-	BinaryOperator$new(operator = "OR", left = e1, right = e2)
+	BinaryOperator$new("OR", e1, e2)
 })
 
 ##
 # Functions.
 ##
 setMethod('max', 'Scalar', function(x) {
-	Function$new(func = 'MAX', x)
+	Function$new('MAX', x)
 })
 
 setMethod('min', 'Scalar', function(x) {
-	Function$new(func = 'MIN', x)
+	Function$new('MIN', x)
 })
 
 setMethod('unique', 'Scalar', function(x) {
-	Function$new(func = 'DISTINCT', x)
+	Function$new('DISTINCT', x)
 })
 
 setMethod('length', 'Scalar', function(x) {
-	Function$new(func = 'COUNT', x)
+	Function$new('COUNT', x)
 })
 
 setMethod('tolower', 'Scalar', function(x) {
-	Function$new(func = 'LOWER', x)
+	Function$new('LOWER', x)
 })
 
 setMethod('toupper', 'Scalar', function(x) {
@@ -85,7 +83,9 @@ setMethod('toupper', 'Scalar', function(x) {
 `[.Scalar` <- function(x, i, j, drop = FALSE) {
 	if (!inherits(x$type, "StringType"))
 		stop("Cannot index a non-string field with `[`.")
-	return(Function$new('SUBSTRING', x, i[1], i[length(i)] - i[1]))
+	# TODO: check indices.
+	# Maybe just use from, to as args and figure the RDBMS-specific args later.
+	Function$new('SUBSTRING', x, i[1], i[length(i)] - i[1])
 }
 
 Function <- setRefClass('Function',
@@ -97,12 +97,10 @@ Function <- setRefClass('Function',
 		'alias'
 	),
 	methods = list(
-		# TODO: consider order of parent in constructor for Scalar.
 		initialize = function(func = NULL, ...) {
 			callSuper()
 			initFields(func = func, alias = NULL)
 			addChildren(...)
-			.self
 		},
 		as = function(name) {
 			alias <<- name
@@ -126,7 +124,7 @@ Operator <- setRefClass('Operator',
 	)
 )
 
-# TODO: add alias to BinaryOperator?
+# TODO: add alias to BinaryOperator, or alias on Operator.
 BinaryOperator <- setRefClass('BinaryOperator',
 	contains = c(
 		'Operator'
@@ -147,7 +145,7 @@ NegatableBinaryOperator <- setRefClass('NegatableBinaryOperator',
 	),
 	methods = list(
 		initialize = function(operator = NULL, left = NULL, right = NULL) {
-			callSuper(operator, left, right)
+			callSuper(operator = operator, left = left, right = right)
 			if (operator == "=" && is.na(right)) operator <<- "IS"
 
 			setOptions(negated = FALSE)
@@ -157,7 +155,6 @@ NegatableBinaryOperator <- setRefClass('NegatableBinaryOperator',
 
 setMethod('!', 'NegatableBinaryOperator', function(x) {
 	x$setOptions(negated = !x$getOption('negated'))
-	x
 })
 
 
@@ -170,7 +167,6 @@ PostfixOperator <- setRefClass('PostfixOperator',
 		initialize = function(operator = NULL, left = NULL) {
 			callSuper(operator = operator)
 			addChildren(left)
-			.self
 		}
 	)
 )

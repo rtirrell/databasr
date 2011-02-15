@@ -69,6 +69,7 @@ setMethod('&', c('Table', 'Table'), function(e1, e2) {
 #' @param database the name of the database this table resides in. If \code{NULL}, this will be 
 #'   taken from the database name of the \code{\link{Session}} object.
 #' @return a \code{\link{Table}} object representing this database table.
+#' TODO: check assignment to reserved names.
 introspectTable <- function(session, table, database = NULL) {
 	connection <- session$request()
 	description <- dbGetQuery(connection$connection, sprintf("DESCRIBE %s;", table))

@@ -19,11 +19,10 @@ Field <- setRefClass('Field',
 		initialize = function(table = NULL, name = NULL, alias = NULL, type = NULL) {
 			initFields(table = table, name = name, alias = alias, type = type)
 			callSuper()
-			return(.self)
 		},
 		as = function(name) {
 			alias <<- name 
-			return(.self)
+			.self
 		}
 	)
 )

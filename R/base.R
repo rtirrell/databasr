@@ -79,7 +79,7 @@ SQLObject <- setRefClass('SQLObject',
 				.children <<- c(.children, child)
 				if (inherits(child, 'SQLObject')) child$setParent(.self)
 			}
-			return(.self)
+			.self
 		},
 		
 		prepare = function() {

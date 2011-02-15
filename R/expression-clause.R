@@ -9,38 +9,27 @@ Clause <- setRefClass('Clause',
 	methods = list(
 		initialize = function(...) {
 			initFields(tables = list())
-			return(callSuper(...))
+			callSuper(...)
 		},
 		
 		addTable = function(...) {
 			for (table in list(...)) {
 				if (!is.null(table) && !hasTable(table)) tables <<- c(tables, table)
 			}
-			return(.self)
+			.self
 		},
 		
 		hasTables = function() {
-			return(length(tables) > 0)
+			length(tables) > 0
 		},
 		
 		hasTable = function(table) {
-			if (all(sapply(tables, function(t) t != table)))
-				return(FALSE)
-			return(TRUE)
+			if (all(sapply(tables, function(t) t != table))) FALSE
+			else TRUE
 		},
 		
 		getTableNames = function() {
-			return(sapply(tables, function(t) t$getName()))
-		},
-		
-		filterValues = function(...) {
-			values <- c()
-			for (child in list(...)) {
-				if (inherits(value, 'Field')) {
-					if (!value$getOption('dummy')) values <- c(values, value)
-				} else values <- c(values, value)
-			}
-			return(values)
+			sapply(tables, function(t) t$getName())
 		}
 	)
 )
@@ -93,7 +82,6 @@ SelectClause <- setRefClass('SelectClause',
 			field.names <- unlist(sapply(findChildren('Field'), function(c) c$name))
 			if (length(field.names) == length(unique(field.names))) setOptions(short.alias = TRUE)
 			
-			# This clause can never be omitted.
 			return(callSuper())
 		}
 	)
@@ -111,7 +99,7 @@ FromClause <- setRefClass('FromClause',
 	),
 	methods = list(
 		initialize = function(...) {
-			return(callSuper(...))
+			callSuper(...)
 		},
 		
 		# Accepts only Tables and literals.
@@ -122,7 +110,8 @@ FromClause <- setRefClass('FromClause',
 			}
 		},
 		
-		# Add any table named in select that is not in joins to the from clause.
+		# Add any table named in select that is not in joins to the from clause. We may also want to
+		# look at the where clause.
 		prepare = function() {
 			if (!is.null(.parent$.children$joins))
 				join.table.names <- .parent$.children$joins$getTableNames()
@@ -131,8 +120,7 @@ FromClause <- setRefClass('FromClause',
 			table.names <- getTableNames()
 			for (select.table in select.tables) {
 				if (!select.table$getName() %in% join.table.names) {
-					if (!select.table$getName() %in% table.names)
-						addChildren(select.table)
+					if (!select.table$getName() %in% table.names) addChildren(select.table)
 				}
 			}
 			
@@ -147,7 +135,7 @@ JoinClause <- setRefClass('JoinClause',
 	),
 	methods = list(
 		initialize = function(...) {
-			return(callSuper(...))
+			callSuper(...)
 		},
 		
 		# Also give name of filed as string for JOIN USING?
@@ -176,21 +164,19 @@ JoinClause <- setRefClass('JoinClause',
 				insertChild(fields[[1]]$table, 1)
 			}
 				
-			return(.self)
+			.self
 		}
 	)
 )
 
-# TODO:
-# 	Where doesn't correctly deal with tables. Does it?
-# 	Use of keyword arguments?
+# TODO: check use of keyword arguments for internal consistency.
 BindingClause <- setRefClass('BindingClause',
 	contains = c(
 		'Clause'
 	),
 	methods = list(
 		initialize = function(...) {
-			return(callSuper(...))
+			callSuper(...)
 		},
 		addChildren = function(...) {
 			args <- list(...)
@@ -198,16 +184,13 @@ BindingClause <- setRefClass('BindingClause',
 			# Join this clause to an existing one.
 			if (length(.children) != 0) {
 				.children[[length(.children)]] <<- BinaryOperator$new(
-					left = .children[[length(.children)]], right = args[[1]]
-				)$setOptions(operator = 'AND')
+					"AND", .children[[length(.children)]], args[[1]]
+				)
 				
-				if (length(args) > 1) 
-					args <- args[2:length(args)]
-				else
-					return(.self)
+				if (length(args) > 1) args <- args[2:length(args)]
+				else return(.self)
 			}
 			callSuper(args)
-			return(.self)
 		}
 	)
 )
@@ -230,7 +213,7 @@ UpdateClause <- setRefClass('UpdateClause',
 	),
 	methods = list(
 		initialize = function(...) {
-			return(callSuper(...))
+			callSuper(...)
 		}
 	)
 )
@@ -259,7 +242,7 @@ RestrictClause <- setRefClass('RestrictClause',
 	),
 	methods = list(
 		initialize = function(...) {
-			return(callSuper(...))
+			callSuper(...)
 		}
 	)
 )
