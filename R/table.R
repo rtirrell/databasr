@@ -1,4 +1,4 @@
-Table <- setRefClass('Table',
+IntrospectedTable <- setRefClass('IntrospectedTable',
 	contains = c(
 		'ClauseElement'
 	),
@@ -16,34 +16,67 @@ Table <- setRefClass('Table',
 	),
 	
 	methods = list(
-		initialize = function(.session, .name, .database = NULL, .key) {
+		#' Though \code{NULL} is more logical, we have to use an empty string for \code{.name} to 
+		#' prevent \code{\link{envRefClass}} from dying when the package is loaded (as it seems to 
+		#' instantiate all classes).
+		initialize = function(.session = NULL, .name = "", .database = NULL, .key = NULL) {
 			initFields(
 				.session = .session, .name = .name, .database = .database, .key = .key
 			)
 			callSuper()
-			if (is.null(.database) && str_detect(.name, fixed('.'))) {
-				split.name <- unlist(str_split(.name, fixed('.')))
+			# TODO: I think that all RDBMS use "." as an identifier separator, but need to check.
+			if (is.null(.database) && str_detect(.name, fixed("."))) {
+				split.name <- unlist(str_split(.name, fixed(".")))
 				.database <<- split.name[1]
 				.name <<- split.name[2]
 			}
-			return(.self)
+			.self
 		},
+		
 		getName = function() {
 			if (is.null(.database)) return(.name)
-			return(str_c(.database, .name, sep = '.'))
+			str_c(.database, .name, sep = '.')
+		},
+		
+		equals = function(other) {
+			if (getName() != other$getName()) return(FALSE)
+			if (length(intersect(.key, other$.key)) != length(.key)) return(FALSE)
+			
+			field.names <- unlist(sapply(.fields, function(f) f$name))
+			other.field.names <- unlist(sapply(other$.fields, function(f) f$name))
+			if (length(intersect(field.names, other.field.names)) != length(field.names)) return(FALSE)
+			
+			TRUE
+		},
+		
+		asTable = function() {
+			Table$new(.self)
 		}
 	)
 )
 
+Table <- setRefClass('Table',
+	contains = c(
+		'IntrospectedTable'
+	),
+	methods = list(
+		initialize = function(table) {
+			import(table)
+			.self
+		}
+	)
+)
 
 #' Test equality of two tables.
+#' 
+#' TODO: move to value-based testing, as above.
 #' @param table the \code{\link{Table}} object to test.
 #' @param other the object to test against.
 #' @return \code{TRUE} if \code{other} is a \code{\link{Table}} object and shares the same name.
 #' 	 \code{FALSE} if the names differ, and \code{NA} if \code{other} is not a \code{\link{Table}}
 #'   object.
-`==.Table` <- function(table, other) {
-	if (!inherits(other, 'Table')) return(NA)
+`==.IntrospectedTable` <- function(table, other) {
+	if (!inherits(other, 'IntrospectedTable')) return(NA)
 	return(table$getName() == other$getName())
 }
 
@@ -52,12 +85,23 @@ Table <- setRefClass('Table',
 	return(!`==.Table`(table, other))
 }
 
-setMethod("$", "Table", function(x, name) {
-	if (name %in% names(x[[".fields"]])) x[[".fields"]][[name]]
+#' When extracting an \code{\link{IntrospectedField}} object from this table, return the
+#' corresponding \code{\link{Field}} object.
+setMethod("$", "IntrospectedTable", function(x, name) {
+	if (name %in% names(x[[".fields"]])) x[[".fields"]][[name]]$asField()
 	else findMethods("$")$envRefClass(x, as.character(name))
 })
 
-setMethod('&', c('Table', 'Table'), function(e1, e2) {
+#' Not sure that we ought to support this. This sort of access is, I think, best reserved and thus
+#' we ourselves can handle calling \code{\link{asField()}} as necessary.
+#setMethod("[[", "Table", function(x, i, j, ..., drop = TRUE) {
+#	if (i %in% names(x$.fields)) x$.fields[[i]]$asField()
+#	else as.environment(x)[[x, i, j, ..., drop = drop]]
+#	if (i %in% names(.Primitive("[[")(x, ".fields"))) .Primitive("[[")(x, ".fields")[[i]]$asField()
+#	else .Primitive("[[")(x, i, j, ..., drop = drop)
+#})
+
+setMethod('&', c('IntrospectedTable', 'IntrospectedTable'), function(e1, e2) {
 	query <- e1$.session$query()$from(e1)$join(e2)
 	return(query)
 })
@@ -73,7 +117,7 @@ setMethod('&', c('Table', 'Table'), function(e1, e2) {
 introspectTable <- function(session, table, database = NULL) {
 	connection <- session$request()
 	description <- dbGetQuery(connection$connection, sprintf("DESCRIBE %s;", table))
-	introspected <- Table$new(
+	introspected <- IntrospectedTable$new(
 		.session = session, .database = database, .name = table, 
 		.key = which(description$Key == "PRI")
 	)
@@ -81,8 +125,8 @@ introspectTable <- function(session, table, database = NULL) {
 	fields <- list()
 	
 	for (i in seq_len(nrow(description))) {
-		field.object <- Field$new(
-			name = description$Field[i], alias = NULL, table = introspected, 
+		field.object <- IntrospectedField$new(
+			name = description$Field[i], table = introspected, 
 			type = createType(description$Type[i])
 		)
 		fields[[description$Field[i]]] <- field.object

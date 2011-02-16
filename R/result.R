@@ -12,27 +12,32 @@
 #' A result is finished when dbHasCompleted returns TRUE.
 #' @name Result
 #' @exportClass
-Result <- setRefClass('Result',
+Result <- setRefClass("Result",
 	contains = c(
-		'DatabasrObject'
+		"DatabasrObject"
 	),
 	fields = c(
-		'session',
-		'connection',
-		'statement',
-		'SQL',
-		'result.set',
-		'result',
-		'introspected',
-		'pending'
+		"session",
+		"connection",
+		"statement",
+		"SQL",
+		"result.set",
+		"result",
+		# This is more aptly named "table".
+		"introspected",
+		"pending"
 	),
 	methods = list(
-		initialize = function(session, statement, fetch.size = 1000, mutable = FALSE) {
+		#' Initialize the result for a given session and statement.
+		#' 
+		#' TODO: we can pull fetch.size from driver options.
+		initialize = function(session, statement, fetch.size = NULL, mutable = FALSE) {
 			initFields(
 				session = session, connection = NULL, SQL = statement$SQL(),
 				result.set = NULL, result = NULL, introspected = NULL, pending = list()
 			)
 			callSuper()
+			if (is.null(fetch.size)) fetch.size <- session$getOption("fetch.size")
 			setOptions(fetch.size = fetch.size, started = FALSE, finished = FALSE)
 			checkMutable(statement, mutable)
 			return(.self)
@@ -41,7 +46,7 @@ Result <- setRefClass('Result',
 		sendQuery = function() {
 			#debug(logger, SQL)
 			setOptions(started = TRUE)
-			connection <<- session$request('result')
+			connection <<- session$request("result")
 			result.set <<- dbSendQuery(connection$connection, SQL)
 		},
 		
@@ -76,12 +81,16 @@ Result <- setRefClass('Result',
 			return(str_c(SQL, '\n'))
 		},
 		
+		#' Fetch results from the result set.
+		#' 
+		#' @param n number of results to fetch (see documentation for \code{\link{Result}} for
+		#'   more information on the default for this, which is a class-level field)
+		#' @param retain whether to append to the old result or discard it completely
 		get = function(n, retain = TRUE) {
 			if (missing(n)) n <- getOption('fetch.size')
 			
 			if (!isStarted()) sendQuery()
 			
-			# TOOD: check corner cases.
 			if (!is.null(result) && retain) {
 				if (n == -1) {
 					old.result <- result
@@ -215,11 +224,11 @@ setMethod('$', 'Result', function(x, name) {
 		} else {
 			for (k in seq_along(i)) {
 				update <- UpdateStatement$new()
-				update$update(result$introspected)
+				update$update(result$introspected$asTable())
 				for (l in j) 
-					update$set(result$introspected$.fields[[l]] == result$result[i[k], j])
+					update$set(result$introspected$.fields[[l]]$asField() == result$result[i[k], j])
 				for (l in result$introspected$.key)
-					update$where(result$introspected$.fields[[l]] == keys[k, l])
+					update$where(result$introspected$.fields[[l]]$asField() == keys[k, l])
 				
 				result$pending <- c(result$pending, update)
 			}

@@ -1,7 +1,7 @@
 library(testthat)
 library(databasr)
 
-context('Test creating types')
+context("Testing creation of types")
 
 type.info <- data.frame(
 	string <- c(

@@ -12,6 +12,9 @@ Session <- setRefClass('Session',
 	),
 	
 	methods = list(
+		#' Create a new session.
+		#' 
+		#' At some point we may support custom connect (and possibly also disconnect) functions.
 		initialize = function(..., connect.func = NULL) {
 			initFields(
 				parameters = list(...), 
@@ -31,7 +34,8 @@ Session <- setRefClass('Session',
 				release(connection)
 			}
 			
-			return(.self)
+			driver.info <- dbGetInfo(driver)
+			setOptions(fetch.size = driver.info$fetch_default_rec)
 		},
 		
 		connect = function() {
@@ -56,11 +60,11 @@ Session <- setRefClass('Session',
 			users[[length(users) + 1]] <<- user
 			connect()
 			
-			return(list(
+			list(
 				connection = connections[[length(connections)]], 
 				parameters = parameters,
 				index = length(connections)
-			))
+			)
 		},
 		
 		release = function(connection) {

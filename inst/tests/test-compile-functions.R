@@ -1,7 +1,7 @@
 library(testthat)
 library(databasr)
 
-context("Testing function compilation")
+context("Testing compilation of functions")
 
 session <- Session$new("MySQL")
 
@@ -34,6 +34,7 @@ statement.base <- "SELECT
   CONCAT(`user_rpt`.`test`.`a`, `user_rpt`.`test`.`b`) AS `%s`
 FROM
   `user_rpt`.`test`;"
+
 #statement <- session$query(c(test$a, test$b))$SQL()
 #expect_equal(statement, sprintf(statement.base, 'concat_1'))
 #statement <- session$query(c(test$a, test$b)$as('ab_count'))$SQL()

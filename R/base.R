@@ -1,4 +1,6 @@
-#' Base class to support attaching options to an instance.
+#' Base class to support attaching options to an instance. 
+#' 
+#' TODO: think about insert, add, etc..
 # 
 #' \code{\link{setOptions}} and \code{\link{getOption}} are not generally intended for end users 
 #' of the package. When such a need would exist, we write a wrapper around each.
@@ -43,6 +45,12 @@ SQLObject <- setRefClass('SQLObject',
 		##
 		# Tree-related functionality.
 		##
+		setParent = function(parent) {
+			.parent <<- parent
+			.self
+		},
+		
+		
 		hasChildren = function() {
 			length(.children) != 0
 		},
@@ -54,17 +62,16 @@ SQLObject <- setRefClass('SQLObject',
 				# needing every child where a given class may contain other objects of that class.
 				if (inherits(child, class)) 
 					class.children <- c(class.children, child)
-				else if (inherits(child, 'SQLObject') && child$hasChildren()) 
+				else if (inherits(child, "SQLObject") && child$hasChildren()) 
 					class.children <- c(class.children, child$findChildren(class))
 			}
 			return(class.children)
 		},
 		
-		setParent = function(parent) {
-			.parent <<- parent
-			.self
+		setChildren = function(...) {
+			.children <<- list()
+			addChildren(...)
 		},
-		
 		
 		#' Insert a child object into this object's \code{.children} at a given location.
 		#' 
@@ -99,7 +106,7 @@ SQLObject <- setRefClass('SQLObject',
 		
 		prepare = function() {
 			for (child in .children) 
-				if (inherits(child, 'SQLObject')) child$prepare()
+				if (inherits(child, "SQLObject")) child$prepare()
 			.self
 		},
 		

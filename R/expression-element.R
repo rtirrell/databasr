@@ -47,9 +47,7 @@ setMethod('==', c('Scalar', 'ANY'), function(e1, e2) {
 })
 
 setMethod('!=', c('Scalar', 'ANY'), function(e1, e2) {
-	operator <- NegatableBinaryOperator$new('==', e1, e2)
-	operator$setOptions(negated = TRUE)
-	operator
+	NegatableBinaryOperator$new("=", e1, e2, TRUE)
 })
 
 setMethod('&', c('Scalar', 'ANY'), function(e1, e2) {
@@ -97,9 +95,8 @@ setMethod('toupper', 'Scalar', function(x) {
 `[.Scalar` <- function(x, i, j, drop = FALSE) {
 	if (!inherits(x$type, "StringType"))
 		stop("Cannot index a non-string field with `[`.")
-	# TODO: check indices.
-	# Maybe just use from, to as args and figure the RDBMS-specific args later.
-	Function$new('SUBSTRING', x, i[1], i[length(i)] - i[1])
+	# TODO: maybe just use from, to as args and figure the RDBMS-specific args later.
+	Function$new("SUBSTRING", x, i[1], i[length(i)] - i[1] + 1)
 }
 
 Function <- setRefClass('Function',
@@ -157,25 +154,29 @@ NegatableBinaryOperator <- setRefClass('NegatableBinaryOperator',
 	contains = c(
 		'BinaryOperator'
 	),
+	fields = c(
+		'negated'
+	),
 	methods = list(
-		initialize = function(operator = NULL, left = NULL, right = NULL) {
+		initialize = function(operator = NULL, left = NULL, right = NULL, negated = FALSE) {
 			callSuper(operator = operator, left = left, right = right)
-			if (operator == "=" && is.na(right)) operator <<- "IS"
-
-			setOptions(negated = FALSE)
+			suppressWarnings({
+				if (operator == "=" && is.na(right)) operator <<- "IS"
+			})
+			initFields(negated = negated)
 		}
 	)
 )
 
-setMethod('!', 'NegatableBinaryOperator', function(x) {
-	x$setOptions(negated = !x$getOption('negated'))
+setMethod("!", "NegatableBinaryOperator", function(x) {
+	x$negated <- !x$negated
 })
 
 
 # Class for any operator that is applied postfix to its argument (e.g. DESC or ASC).
-PostfixOperator <- setRefClass('PostfixOperator',
+PostfixOperator <- setRefClass("PostfixOperator",
 	contains = c(
-		'Operator'
+		"Operator"
 	),
 	methods = list(
 		initialize = function(operator = NULL, left = NULL) {

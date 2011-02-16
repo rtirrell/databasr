@@ -44,10 +44,9 @@ UpdateStatement <- setRefClass('UpdateStatement',
 		},
 		SQL = function() {
 			formatter <- Formatter$new()
-			lines <- compile(.self, formatter, NULL)
-			statement <- formatter$finish(lines)
+			compiler <- MySQLCompiler$new(.self, formatter)
+			compiler$compile()
 			#debug(logger, statement)
-			formatter$finish(lines)
 		}
 	)
 )
@@ -90,6 +89,7 @@ SelectStatement <- setRefClass('SelectStatement',
 			return(.self)
 		},
 		
+		#' TODO: the logic for the next four below is the same in every case. 
 		where = function(...) {
 			if (!'where' %in% names(.children)) .children$where <<- WhereClause$new(.self)
 			.children$where$addChildren(...)
@@ -116,13 +116,13 @@ SelectStatement <- setRefClass('SelectStatement',
 		
 		limit = function(n) {
 			if (!'limit' %in% names(.children)) .children$limit <<- LimitClause$new(.self)
-			.children$limit$addChildren(n)
+			.children$limit$setChildren(n)
 			return(.self)
 		},
 		
 		offset = function(n) {
 			if (!'offset' %in% names(.children)) .children$offset <<- OffsetClause$new(.self)
-			.children$offset$addChildren(n)
+			.children$offset$setChildren(n)
 			return(.self)
 		},
 		
@@ -166,8 +166,8 @@ SelectStatement <- setRefClass('SelectStatement',
 			prepare()
 			
 			formatter <- Formatter$new()
-			lines <- compile(.self, formatter, NULL)
-			statement <- formatter$finish(lines)
+			compiler <- MySQLCompiler$new(.self, formatter)
+			statement <- compiler$compile()
 			
 			restore()
 			
