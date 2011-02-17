@@ -1,9 +1,13 @@
+#' Represents a session: a collection of connections to the same database with the same parameters.
+#' 
+#' DONE: support group for non-default group connections.
 Session <- setRefClass('Session',
 	contains = c(
 		'DatabasrObject'
 	),
 	
 	fields = c(
+		"database",
 		'driver',
 		'parameters',
 		'connect.func',
@@ -23,31 +27,29 @@ Session <- setRefClass('Session',
 				users = list()
 			)
 			callSuper()
-			setOptions(finished = FALSE, parameter.arguments = TRUE)
+			setOptions(finished = FALSE)
 			driver <<- dbDriver(parameters[[1]])
+			setOptions(driver = parameters[[1]])
 			
-			if (length(parameters) == 1) {
-				setOptions(parameter.arguments = FALSE)
+			if (length(parameters) == 1 || "group" %in% names(parameters)) {
 				connection <- request()
 				connection.info <- dbGetInfo(connection$connection)
-				parameters[names(connection.info)] <<- connection.info
+				database <<- connection.info$dbname
 				release(connection)
-			}
+			} else database <<- parameters$dbname
 			
 			driver.info <- dbGetInfo(driver)
-			setOptions(fetch.size = driver.info$fetch_default_rec)
+			if ("fetch_default_rec" %in% names(driver.info)) 
+				setOptions(fetch.size = driver.info$fetch_default_rec)
+			.self
 		},
 		
 		connect = function() {
-			if (length(users) > length(connections)) {
-				if (getOption('parameter.arguments'))
-					connections[[length(connections) + 1]] <<- do.call('dbConnect', c(driver, parameters[-1]))
-				else
-					connections[[length(connections) + 1]] <<- dbConnect(driver)
-			}
+			if (length(users) > length(connections))
+				connections[[length(connections) + 1]] <<- do.call(dbConnect, c(driver, parameters[-1]))
 		},
 		
-		request = function(user = 'anonymous') {
+		request = function(user = "anonymous") {
 			which.unused <- which(is.na(users))
 			if (length(which.unused) > 0) {
 				users[[which.unused[1]]] <<- user
@@ -62,7 +64,6 @@ Session <- setRefClass('Session',
 			
 			list(
 				connection = connections[[length(connections)]], 
-				parameters = parameters,
 				index = length(connections)
 			)
 		},
@@ -82,17 +83,18 @@ Session <- setRefClass('Session',
 		},
 		
 		query = function(...) {
-			return(SelectStatement$new(session = .self)$select(...))
+			SelectStatement$new(session = .self)$select(...)
 		},
 		
 		finish = function() {
-			if (getOption('finished')) {
-				warning('Session has already been finished.')
+			if (getOption("finished")) {
+				warning("Session has already been finished.")
 			} else {
 				suppressMessages({
 					for (connection in connections) try(dbDisconnect(connection), silent = TRUE)
 					try(dbUnloadDriver(driver), silent = TRUE)
 				})
+			setOptions(finished = TRUE)
 			}
 		},
 		

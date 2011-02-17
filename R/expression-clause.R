@@ -156,6 +156,7 @@ JoinClause <- setRefClass('JoinClause',
 				addTable(fields[[1]]$table)
 				insertChild(fields[[1]]$table$asTable(), 1)
 			}
+			.self
 		},
 			
 			
@@ -165,11 +166,12 @@ JoinClause <- setRefClass('JoinClause',
 		# we take the table of the leftmost field.
 		#' TODO: make type a field, rather than an option.
 		addChild = function(child, name) {
+			# This sets the type based on the last element we see -- which is what we want.
 			if (inherits(child, "IntrospectedTable")) {
 				type <<- "NATURAL JOIN"
 				addTable(child)
-			} 
-			if (inherits(child, "Field")) {
+				child <- child$asTable()
+			} else if (inherits(child, "Field")) {
 				type <<- "JOIN USING"
 			} else type <<- "JOIN ON"
 			callSuper(child)

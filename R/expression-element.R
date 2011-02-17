@@ -1,4 +1,4 @@
-ClauseElement <- setRefClass('ClauseElement',
+Element <- setRefClass('Element',
 	contains = c(
 		'SQLObject'
 	),
@@ -11,7 +11,7 @@ ClauseElement <- setRefClass('ClauseElement',
 
 Scalar <- setRefClass('Scalar',
 	contains = c(
-		'ClauseElement'
+		'Element'
 	),
 	methods = list(
 		initialize = function() {
@@ -20,7 +20,22 @@ Scalar <- setRefClass('Scalar',
 	)
 )
 
+Tuple <- setRefClass("Tuple",
+	contains = c(
+		"Scalar"
+	),
+	methods = list(
+		initialize = function(...) {
+			callSuper()
+			addChildren(...)
+			.self
+		}
+	)
+)
+tuple <- function(...) Tuple$new(...)
+
 setMethod('%in%', c('Scalar', 'ANY'), function(x, table) {
+	if (!inherits(table, "Tuple")) table <- do.call(Tuple$new, as.list(table))
 	NegatableBinaryOperator$new("IN", x, table)
 })
 

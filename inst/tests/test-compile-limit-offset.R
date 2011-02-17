@@ -1,27 +1,19 @@
-library(testthat)
-library(databasr)
-
 context("Testing compilation of LIMIT and OFFSET")
 
-session <- Session$new("MySQL")
-
-test <- introspectTable(session, "test")
-
-statement.base <- "SELECT
-  `user_rpt`.`test`.`a` AS `a`, `user_rpt`.`test`.`b` AS `b`
+statement.base <- prepareStatement("SELECT
+  `%database`.`databasr_test_3`.`i1` AS `i1`, `%database`.`databasr_test_3`.`d1` AS `d1`
 FROM
-  `user_rpt`.`test`
+  `%database`.`databasr_test_3`
 LIMIT %d
 OFFSET %d;"
+)
 
 
-statement <- session$query(test)[1:1]$SQL()
+statement <- session$query(db3)[1:1]$SQL()
 expect_equal(statement, sprintf(statement.base, 1, 0))
 
-statement <- session$query(test)[1:10]$SQL()
+statement <- session$query(db3)[1:10]$SQL()
 expect_equal(statement, sprintf(statement.base, 10, 0))
 
-statement <- session$query(test)[1:10000]$SQL()
+statement <- session$query(db3)[1:10000]$SQL()
 expect_equal(statement, sprintf(statement.base, 10000, 0))
-
-session$finish()

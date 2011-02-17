@@ -1,18 +1,38 @@
-library(testthat)
-library(databasr)
-
 context("Testing compilation of JOIN")
-session <- Session$new("MySQL")
-test <- introspectTable(session, "test")
-el.snps <- introspectTable(session, "el_snps")
-
-statement <- session$query(test)$join(el.snps$position != test$a)$SQL()
-expect_equal(statement, "SELECT
-  `user_rpt`.`test`.`a` AS `a`, `user_rpt`.`test`.`b` AS `b`
+statement <- prepareStatement("SELECT
+  `%database`.`databasr_test_1`.`i1` AS `i1`, `%database`.`databasr_test_1`.`v1` AS `v1`
 FROM
-  `user_rpt`.`test`
+  `%database`.`databasr_test_1`
 JOIN
-  `user_rpt`.`el_snps`
+  `%database`.`databasr_test_2`
 ON
-  `user_rpt`.`el_snps`.`position` != `user_rpt`.`test`.`a`;"
+  `%database`.`databasr_test_2`.`i1` = `%database`.`databasr_test_1`.`i1`;"
 )
+
+q1 <- session$query(db1)$join(db2$i1 == db1$i1)
+expect_equal(q1$SQL(), statement)
+r1 <- q1$execute()$all()
+
+statement <- prepareStatement("SELECT
+  `%database`.`databasr_test_1`.`i1` AS `i1`, `%database`.`databasr_test_1`.`v1` AS `v1`
+FROM
+  `%database`.`databasr_test_1`
+JOIN
+  `%database`.`databasr_test_2`
+USING (
+  `i1`
+);")
+
+q2 <- session$query(db1)$join(db2$i1)
+expect_equal(q2$SQL(), statement)
+r2 <- q2$execute()$all()
+expect_equal(r1, r2)
+
+statement <- prepareStatement("SELECT
+  `%database`.`databasr_test_1`.`i1` AS `i1`, `%database`.`databasr_test_1`.`v1` AS `v1`
+FROM
+  `%database`.`databasr_test_1`
+NATURAL JOIN
+  `%database`.`databasr_test_2`;")
+q3 <- session$query(db1)$join(db2)
+expect_equal(q3$SQL(), statement)

@@ -1,131 +1,8 @@
-compileStatement <- function(value, formatter, parent) {
-	lines <- c()
-	if (!is.null(parent)) lines <- formatter$down()$line(lines, '(', ' ')
-	lines <- c(lines, sapply(value$.children, compile, formatter, value))
-	if (!is.null(parent)) lines <- formatter$up()$line(lines, ')')
-	return(str_c(unlist(lines), collapse = '\n'))
-}
-
-compileChildren <- function(formatter, value, include = NULL, exclude = NULL) {
-	if (!is.null(include)) {
-		indices <- include
-	} else {
-		indices <- seq_along(value$.children)
-		if (!is.null(exclude))
-			indices <- indices[-exclude]
-	}
-	
-	return(unlist(sapply(value$.children[indices], compile, formatter, value)))
-}
-
-
-
-compile <- function(value, formatter, parent) {
-	value.class <- class(value)
-	function.name <- str_c(
-		'compile', toupper(substring(value.class, 1, 1)), substring(value.class, 2)
-	)
-	#print(str_c('Compile function name: ', function.name))
-	get(function.name)(value, formatter, parent)
-}
-
-formatTuple <- function(value, quote = FALSE) {
-	if (quote)
-		value = sprintf('"%s"', value)
+compileVector <- function(value, quote = FALSE) {
+	if (quote) value <- sprintf("'%s'", value)
 	
 	return(sprintf('(%s)', str_c(value, collapse = ', ')))
 }
-
-countCharacter <- function(character, ...) {
-	return(sapply(strsplit(unlist(list(...)), '', fixed = TRUE), function(value) {
-		sum(value == character)
-	}))
-}
-
-Formatter <- setRefClass('Formatter',
-	fields = c(
-		# A list of character vectors (i.e., a list where each element is a character vector of one
-		# or more lines).
-		'.lines',
-		'level'
-	),
-	contains = c(
-		'DatabasrObject'
-	),
-	
-	methods = list(
-		initialize = function() {
-			callSuper()
-			initFields(.lines = list(), level = 0)
-		},
-		
-		getCounter = function(counter.name) {
-			if (!counter.name %in% names(.options)) .options[[counter.name]] <<- 1
-			else .options[[counter.name]] <<- .options[[counter.name]] + 1
-		},
-		
-		getPadding = function() {
-			return(str_c(str_c(rep("  ", level), collapse = "")))
-		},
-		
-		begin = function(value, padding = getPadding()) {
-			.lines[[length(.lines) + 1]] <<- character(0)
-			if (!missing(value)) line(value, padding)
-			.self
-		},
-		
-		#' Begin a new line.
-		#' 
-		#' @param line new line.
-		#' @param padding padding to prepend to the line, defaults to \code{\link{getPadding}}.
-		#' @return .self
-		line = function(line, padding = getPadding()) {
-			if (is.list(line)) line <- unlist(line)
-			.lines[[length(.lines)]] <<- c(.lines[[length(.lines)]], str_c(padding, line))
-			.self
-		},
-		
-		lines = function(other.lines, padding = getPadding()) {
-			for (other.line in other.lines) line(other.line, padding)
-			.self
-		},
-		
-		#' Add to the last line.
-		#' 
-		#' @param value value to add, a character vector of length one.
-		#' @param sep separator to prepend to the value, defaults to " ".
-		#' @return .self
-		toLine = function(value, sep = " ") {
-			last <- length(.lines[[length(.lines)]])
-			.lines[[length(.lines)]][[last]] <<- str_c(.lines[[length(.lines)]][[last]], value, sep = sep)
-			.self
-		},
-		
-		up = function() {
-			level <<- level - 1
-			.self
-		},
-		
-		down = function() {
-			level <<- level + 1
-			.self
-		},
-		
-		
-		end = function() {
-			return.lines <- .lines[[length(.lines)]]
-			.lines <<- .lines[-length(.lines)]
-			return.lines
-		},
-		
-		
-		finish = function(other.lines) {
-			other.lines <- unlist(other.lines)
-			other.lines[[length(other.lines)]] <- str_c(other.lines[[length(other.lines)]], ";")
-			str_c(other.lines, collapse = "\n")
-		}
-	)
-)
 
 .OPERATOR.NAMES <- list(
 	"=" = "eq",
@@ -147,6 +24,7 @@ Compiler <- setRefClass("Compiler",
 	fields = c(
 		"statement",
 		"formatter",
+		# I believe this is shared by all DBMSes that we will target.
 		'identifier.collapse',
 		'identifier.quote',
 		'identifier.base'
@@ -200,10 +78,13 @@ Compiler <- setRefClass("Compiler",
 		compileAlias = function(value) {
 			if (is.null(value$alias)) {
 				fields <- value$findChildren("Field")
+				# A field name composed this way could be duplicated. We could track field names on the 
+				# parent SELECT and perform checks. But we'd like *all* aliases to be treated the same way,
+				# not just all following the first (e.g., if we were to add "_n").
 				if (length(fields) == 1) 
-					prepareIdentifier(str_c(tolower(value$func), "_", fields[[1]]$name))
+					compileIdentifier(str_c(tolower(value$func), "_", fields[[1]]$name))
 				else 
-					prepareIdentifier(str_c(tolower(value$func), "_", formatter$getCounter(value$func)))
+					compileIdentifier(str_c(tolower(value$func), "_", formatter$getCounter(value$func)))
 			} else compileIdentifier(value$alias)
 		},
 		
@@ -211,17 +92,17 @@ Compiler <- setRefClass("Compiler",
 		# R literals.
 		##
 		compileInteger = function(value) {
-			if (length(value) > 1) formatTuple(value)
+			if (length(value) > 1) compileVector(value)
 			else value
 		},
 		
 		compileNumeric = function(value) {
-			if (length(value) > 1) formatTuple(value)
+			if (length(value) > 1) compileVector(value)
 			else value
 		},
 		
 		compileCharacter = function(value) {
-			if (length(value) > 1) formatTuple(value, TRUE)
+			if (length(value) > 1) compileVector(value, TRUE)
 			else sprintf("'%s'", value)
 		},
 		
@@ -250,7 +131,7 @@ Compiler <- setRefClass("Compiler",
 				if (is.null(value$alias)) {
 					if (!is.null(value$.parent$getOption("short.alias"))) 
 						alias <- compileIdentifier(value$name)
-					else alias <- prepareIdenitfier(str_c(value$table$.name, "_", value$name))
+					else alias <- compileIdentifier(str_c(value$table$.name, "_", value$name))
 				} else alias <- value$alias
 				str_c(name, "AS", alias, sep = " ")
 			} else name
@@ -259,6 +140,15 @@ Compiler <- setRefClass("Compiler",
 		##
 		# Non-atomic elements.
 		##
+
+		compileTuple = function(value) {
+			str_c("(", str_c(dispatchChildren(value), collapse = ", "), ")")
+		},
+		
+		compileList = function(value) {
+			str_c("(", str_c(unlist(sapply(value, dispatch)), collapse = ", "), ")")
+		},
+		
 		compileFunction = function(value) {
 			func <- str_c(value$func, "(")
 			func <- str_c(func, str_c(dispatchChildren(value), collapse = ", "), ")")
@@ -268,6 +158,10 @@ Compiler <- setRefClass("Compiler",
 			if (inherits(value$.parent, "SelectClause"))
 				str_c(func, "AS", compileAlias(value), sep = " ")
 			else func
+		},
+		
+		compilePostfixOperator = function(value) {
+			str_c(dispatchChildren(value), value$operator, sep = " ")
 		},
 		
 		compileBinaryOperator = function(value) {
@@ -280,7 +174,6 @@ Compiler <- setRefClass("Compiler",
 		},
 		
 		compileNegatableBinaryOperator = function(value) {
-			# TODO: this should not be an option - it's required.
 			if (value$negated) 
 				value$operator <- switch(value$operator, "=" = "!=", IN = "NOT IN", IS = "NOT IS")
 			compileBinaryOperator(value)
@@ -289,9 +182,9 @@ Compiler <- setRefClass("Compiler",
 		##
 		# Clauses.
 		# 
-		# Currently this approach breaks with nesting. To account for this, add block() to formatter,
-		# which adds a new element to .lines list and adds syntax to the block; end() 
-		# pops that element.
+		# This approach should continue to work with nesting - as ".lines" on the formatter is
+		# stacklike and modifications will never be interleaved. That said, it's not yet covered by
+		# tests.
 		##
 
 		compileSelectClause = function(value) {
@@ -306,10 +199,15 @@ Compiler <- setRefClass("Compiler",
 		
 		# These clauses should be lines, but check first.
 		compileFromClause = function(value) {
-			formatter$begin("FROM")$down()$line(str_c(dispatchChildren(value), collapse = " "))
+			formatter$begin("FROM")$down()$line(str_c(dispatchChildren(value), collapse = ", "))
 			formatter$up()$end()
 		},
 		
+		#' Compile a WHERE clause.
+		#' 
+		#' Note that in the current expression generation scheme several clause types only ever 
+		#' have a single child as their binding clause -- the first (WHERE, HAVING) or second 
+		#' (JOIN ON) one. For the sake of right now, we nonetheless collapse by " ".
 		compileWhereClause = function(value) {
 			formatter$begin("WHERE")$down()$line(str_c(dispatchChildren(value), collapse = " "))
 			formatter$up()$end()
@@ -330,6 +228,21 @@ Compiler <- setRefClass("Compiler",
 				formatter$line("USING (")$down()
 				return(formatter$lines(dispatchChildren(value, exclude = 1))$up()$line(")")$end())
 			}
+		},
+		
+		compileGroupClause = function(value) {
+			formatter$begin("GROUP BY")$down()$line(str_c(dispatchChildren(value), collapse = ", "))
+			formatter$up()$end()
+		},
+		
+		compileHavingClause = function(value) {
+			formatter$begin("HAVING")$down()$line(str_c(dispatchChildren(value), collapse = " "))
+			formatter$up()$end()
+		},
+		
+		compileOrderClause = function(value) {
+			formatter$begin("ORDER BY")$down()$line(str_c(dispatchChildren(value), collapse = ", "))
+			formatter$up()$end()
 		},
 		
 		compileLimitClause = function(value) {
@@ -387,7 +300,10 @@ MySQLCompiler <- setRefClass('MySQLCompiler',
 		# Clauses.
 		##
 		
+		#' Compile a `SELECT` clause.
 		#' 
+		#' MySQL's behavior needs to diverge from (e.g.) Postgres', as Postgres should never issue
+		#' `COUNT(*)`.
 		compileSelectClause = function(value) {
 			if (!is.null(value$getOption("distinct"))) formatter$begin("SELECT DISTINCT")$down()
 			else formatter$begin("SELECT")$down()

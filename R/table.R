@@ -1,6 +1,6 @@
 IntrospectedTable <- setRefClass('IntrospectedTable',
 	contains = c(
-		'ClauseElement'
+		'Element'
 	),
 	fields = c(
 		# Session that introspected this table.
@@ -35,16 +35,16 @@ IntrospectedTable <- setRefClass('IntrospectedTable',
 		
 		getName = function() {
 			if (is.null(.database)) return(.name)
-			str_c(.database, .name, sep = '.')
+			str_c(.database, .name, sep = ".")
 		},
 		
 		equals = function(other) {
 			if (getName() != other$getName()) return(FALSE)
-			if (length(intersect(.key, other$.key)) != length(.key)) return(FALSE)
+			if (!haveSameElements(.key, other$.key)) return(FALSE)
 			
 			field.names <- unlist(sapply(.fields, function(f) f$name))
 			other.field.names <- unlist(sapply(other$.fields, function(f) f$name))
-			if (length(intersect(field.names, other.field.names)) != length(field.names)) return(FALSE)
+			if (!haveSameElements(field.names, other.field.names)) return(FALSE)
 			
 			TRUE
 		},
@@ -129,11 +129,13 @@ introspectTable <- function(session, table, database = NULL) {
 			name = description$Field[i], table = introspected, 
 			type = createType(description$Type[i])
 		)
+		# This works, but assignment has the advantage of tab-completing field names while running
+		# interactively.
 		fields[[description$Field[i]]] <- field.object
 	}
 	introspected$.fields <- fields
 	
-	if (!str_detect(table, fixed('.'))) introspected$.database <- connection$parameters$dbname
+	if (!str_detect(table, fixed('.'))) introspected$.database <- session$database
 	session$release(connection)
 	return(introspected)
 }

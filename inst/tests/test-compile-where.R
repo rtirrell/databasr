@@ -1,26 +1,34 @@
-library(testthat)
-library(databasr)
-
 context("Testing compilation of WHERE")
 
-session <- Session$new("MySQL")
-
-test <- introspectTable(session, "test")
-
-statement.base <- "SELECT
-  `user_rpt`.`test`.`a` AS `a`, `user_rpt`.`test`.`b` AS `b`
+statement.base <- prepareStatement("SELECT
+  `%database`.`databasr_test_2`.`i1` AS `i1`, `%database`.`databasr_test_2`.`v1` AS `v1`, `%database`.`databasr_test_2`.`v2` AS `v2`
 FROM
-  `user_rpt`.`test`
+  `%database`.`databasr_test_2`
 WHERE
-  `user_rpt`.`test`.`a` = %d AND `user_rpt`.`test`.`b` = '%s';"
+  `%database`.`databasr_test_2`.`i1` = %d AND `%database`.`databasr_test_2`.`v2` = '%s';"
+)
 
-statement <- session$query(test)$where(test$a == 0 & test$b == '')$SQL()
-expect_equal(statement, sprintf(statement.base, 0, ''))
+expressions <- list(
+	db2$i1 == 0 & db2$v2 == "",
+	db2$i1 == 10 & db2$v2 == "ten",
+	db2$i1 == -30 & db2$v2 == "\\n"
+)
+compiled <- list(
+	list(0, ""),
+	list(10, "ten"),
+	list(-30, "\\n")
+)
 
-statement <- session$query(test)$where(test$a == 10 & test$b == 'ten')$SQL()
-expect_equal(statement, sprintf(statement.base, 10, 'ten'))
-
-statement <- session$query(test)$where(test$a == -30 & test$b == '\\n')$SQL()
-expect_equal(statement, sprintf(statement.base, -30, '\\n'))
-
-session$finish()
+for (i in seq_along(expressions)) {
+	statement <- session$query(db2)$where(expressions[[i]])$SQL()
+	expect_equal(statement, do.call(sprintf, c(statement.base, compiled[[i]])))
+}
+	
+#statement <- session$query(test)$where(test$a == 0 & test$b == '')$SQL()
+#expect_equal(statement, sprintf(statement.base, 0, ''))
+#
+#statement <- session$query(test)$where(test$a == 10 & test$b == 'ten')$SQL()
+#expect_equal(statement, sprintf(statement.base, 10, 'ten'))
+#
+#statement <- session$query(test)$where(test$a == -30 & test$b == '\\n')$SQL()
+#expect_equal(statement, sprintf(statement.base, -30, '\\n'))

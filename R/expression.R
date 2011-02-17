@@ -1,3 +1,3 @@
 .CLAUSE.ORDER <- c(
-	'select', 'from', 'joins', 'where', 'group', 'having', 'limit', 'offset'
+	'select', 'from', 'joins', 'where', 'group', 'having', 'order', 'limit', 'offset'
 )

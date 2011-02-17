@@ -10,6 +10,8 @@
 #' }
 #' In short, a result is started when the query is sent.
 #' A result is finished when dbHasCompleted returns TRUE.
+#' TODO: getting all could just use dbReadTable.
+#' 
 #' @name Result
 #' @exportClass
 Result <- setRefClass("Result",
@@ -52,10 +54,14 @@ Result <- setRefClass("Result",
 		
 		# Get all results for this query. If the result is marked mutable, then we return this object.
 		# Otherwise, we return the underlying data frame.
-		getAll = function() {
+		all = function() {
 			get(-1)
 			if (!getOption('mutable')) return(getResult())
 			return(.self)
+		},
+		
+		getAll = function() {
+			all()
 		},
 		
 		getResult = function() {
@@ -102,7 +108,7 @@ Result <- setRefClass("Result",
 				}
 			} else result <<- fetch(result.set, n)
 			
-			if (dbHasCompleted(result.set) && !isMutable()) return(getResult())
+			if (dbHasCompleted(result.set) && !getOption("mutable")) return(getResult())
 			return(.self)
 		},
 		
@@ -111,8 +117,8 @@ Result <- setRefClass("Result",
 		},
 		
 		finish = function() {
-			if (isFinished()) {
-				warning('Result has already been finished.')
+			if (getOption("finished")) {
+				#warning('Result has already been finished.')
 			} else {
 				
 				if (isDirty()) warning('Finishing result with pending mutations.')
@@ -120,7 +126,7 @@ Result <- setRefClass("Result",
 				
 				setOptions(affected.row.count = getAffectedRowCount())
 				
-				if (isStarted()) {
+				if (getOption("started")) {
 					dbClearResult(result.set)
 					session$release(connection)
 				}
@@ -163,17 +169,13 @@ Result <- setRefClass("Result",
 				
 				table.keys <- sapply(introspected$.fields[introspected$.key], function(k) k$name)
 				select.keys <- sapply(statement$.children$select$.children, function(k) k$name)
-				if (length(introspected$.key) == 0 || !all(table.keys %in% select.keys))
+				if (length(introspected$.key) == 0 || !haveSameElements(table.keys, select.keys))
 					stop.message <- 'Cannot alter result lacking complete primary key.'
 
 				statement$restore()
 				if (!is.null(stop.message)) stop(stop.message)
 				setOptions(mutable = TRUE)
 			}
-		},
-		
-		isMutable = function() {
-			return(getOption('mutable'))
 		},
 		
 		finalize = function() {
@@ -188,16 +190,19 @@ Result <- setRefClass("Result",
 	return(`[.data.frame`(result$result, ...))
 }
 
-# TODO: use this method in Table.
+#' Access a field in the underlying data frame.
+#' 
+#' TODO: as far as I know, there's no way to allow result.object$field[10] <- 4 to be intercepted
+#'   to the tune of ("field", 4). We could also overload `[[<-` to allow simpler (e.g., 
+#'   "[['field']] <- value" column-wise replacement, versus "[, 'field'] <- value".
 setMethod('$', 'Result', function(x, name) {
 	if (name %in% names(x[['result']])) x[['result']][, name]
 	else findMethods('$')$envRefClass(x, as.character(name))
 })
 
-# It may be better to use [<- instead of rbinding for new values? Memory?
-# TODO:
-#   - check that we've made a change.
-#   - overload rbind, nrow, length, etc... see data.table.
+#' Replace value(s) in the underlying data frame.
+#' 
+#' TODO: adding rows and using dbWriteTable.
 `[<-.Result` <- function(result, i, j, value) {
 	if (!result$isStarted()) 
 		stop(str_c(
@@ -208,7 +213,7 @@ setMethod('$', 'Result', function(x, name) {
 	if (missing(i)) i = seq_len(nrow(result$result))
 	if (missing(j)) j = seq_along(result$result)
 	
-	if (result$isMutable()) {
+	if (result$getOption("mutable")) {
 		if (i[length(i)] > nrow(result$result)) {
 			
 		}
@@ -217,7 +222,7 @@ setMethod('$', 'Result', function(x, name) {
 	
 	result$result <- `[<-.data.frame`(result$result, i, j, value)
 	
-	if (result$isMutable()) {
+	if (result$getOption("mutable")) {
 		if (i[length(i)] > nrow(result$result)) {
 			# PendingInsert: keep track of the indices and force flushing when new result is fetched
 			# if retain is false.
@@ -262,7 +267,7 @@ setMethod('print', 'Result', function(x, nrows = 10, ...) {
 		}
 	}
 	cat('* completed: ', x$isFinished(), ', affected: ', x$getAffectedRowCount(), ' rows.', sep = '')
-	if (x$isMutable()) cat(', pending: ', length(x$pending), ' mutations', sep = '')
+	if (x$getOption("mutable")) cat(', pending: ', length(x$pending), ' mutations', sep = '')
 	cat('.\n', sep = '')
 })
 setMethod('show', 'Result', function(object) print(object))

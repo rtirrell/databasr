@@ -90,7 +90,8 @@ SQLObject <- setRefClass('SQLObject',
 		#' @param name name of the object
 		#' @return \code{.self}
 		addChild = function(child, name = NULL) {
-			if (is.null(name)) .children <<- c(.children, child)
+			# TODO: prevent collapsing of arguments.
+			if (is.null(name)) .children[[length(.children) + 1]] <<- child
 			else .children[[name]] <<- child
 			if (inherits(child, "SQLObject")) child$setParent(.self)
 			.self
@@ -99,6 +100,8 @@ SQLObject <- setRefClass('SQLObject',
 		
 		addChildren = function(...) {
 			args <- list(...)
+			# Handle WHERE, which may pass a list. I don't know how to do.call(callSuper).
+			if (length(args) == 1 && is.list(args[[1]])) args <- unlist(args)
 			arg.names <- names(args)
 			for (i in seq_along(args)) addChild(args[[i]], arg.names[[i]])
 			.self

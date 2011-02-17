@@ -70,69 +70,70 @@ SelectStatement <- setRefClass('SelectStatement',
 				select = SelectClause$new(.self), 
 				from = FromClause$new(.self)
 			)
-			return(select(...))
+			select(...)
 		},
+		
 		select = function(...) {
 			.children$select$addChildren(...)
-			return(.self)
+			.self
 		},
 		
 		from = function(...) {
 			.children$from$addChildren(...)
-			return(.self)
+			.self
 		},
 		
 		join = function(...) {
 			if (!'joins' %in% names(.children)) .children$joins <<- ClauseList$new(.self)
 			join.clause <- JoinClause$new(.self)
 			.children$joins$addChildren(join.clause$addChildren(...))
-			return(.self)
+			.self
 		},
 		
 		#' TODO: the logic for the next four below is the same in every case. 
 		where = function(...) {
 			if (!'where' %in% names(.children)) .children$where <<- WhereClause$new(.self)
 			.children$where$addChildren(...)
-			return(.self)
+			.self
 		},
 		
 		group = function(...) {
 			if (!"group" %in% names(.children)) .children$group <<- GroupClause$new(.self)
 			.children$group$addChildren(...)
-			return(.self)
+			.self
 		},
 		
 		having = function(...) {
 			if (!"having" %in% names(.children)) .children$having <<- HavingClause$new(.self)
 			.children$having$addChildren(...)
-			return(.self)
+			.self
 		},
 		
 		order = function(...) {
-			if (!'where' %in% names(.children)) .children$where <<- WhereClause$new(.self)
+			if (!"order" %in% names(.children)) .children$order <<- OrderClause$new(.self)
 			.children$order$addChildren(...)
-			return(.self)
+			.self
 		},
 		
 		limit = function(n) {
-			if (!'limit' %in% names(.children)) .children$limit <<- LimitClause$new(.self)
+			if (!"limit" %in% names(.children)) .children$limit <<- LimitClause$new(.self)
 			.children$limit$setChildren(n)
-			return(.self)
+			.self
 		},
 		
 		offset = function(n) {
-			if (!'offset' %in% names(.children)) .children$offset <<- OffsetClause$new(.self)
+			if (!"offset" %in% names(.children)) .children$offset <<- OffsetClause$new(.self)
 			.children$offset$setChildren(n)
-			return(.self)
+			.self
 		},
 		
 		distinct = function() {
 			.children$select$setOptions(distinct = TRUE)
-			return(.self)
+			.self
 		},
 		count = function() {
 			.children$select$setOptions(count = TRUE)
-			return(.self)
+			.self
 		},
 		
 		# TODO: potential design decision here. prepare is database-agnostic preparation.
@@ -158,8 +159,7 @@ SelectStatement <- setRefClass('SelectStatement',
 		},
 		
 		execute = function(...) {
-			result <- Result$new(session = session, statement = .self, ...)
-			return(result)
+			Result$new(session = session, statement = .self, ...)
 		},
 		
 		SQL = function() {
@@ -176,8 +176,8 @@ SelectStatement <- setRefClass('SelectStatement',
 	)
 )
 
-setMethod('[', c('SelectStatement', 'ANY', 'ANY'), function(x, i, ...) {
-	return(x$limit(i[length(i)] - i[1] + 1)$offset(i[1] - 1))
+setMethod("[", c("SelectStatement", "ANY", "ANY"), function(x, i, ...) {
+	x$limit(i[length(i)] - i[1] + 1)$offset(i[1] - 1)
 })
 
 Transaction <- setRefClass('Transaction',

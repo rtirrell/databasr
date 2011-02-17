@@ -1,8 +1,5 @@
 library(RMySQL)
 library(databasr)
-session <- Session$new("MySQL")
 
-test <- introspectTable(session, "test")
-
-q <- session$query(test)
-statement <- q$SQL()
+source("inst/tests/helper-load.R")
+source("inst/tests/helper-function.R")

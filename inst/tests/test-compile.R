@@ -1,19 +1,28 @@
-library(testthat)
-library(databasr)
-
 context("Testing compilation")
 
-session <- Session$new("MySQL")
-test <- introspectTable(session, "test")
-statement.base <- "SELECT
-  `user_rpt`.`test`.`%s` AS `%s`
+statement.base <- prepareStatement("SELECT
+  `%database`.`databasr_test_1`.`%s` AS `%s`
 FROM
-  `user_rpt`.`test`;"
+  `%database`.`databasr_test_1`;"
+)
 
-statement <- session$query(test$a)$SQL()
-expect_equal(statement, sprintf(statement.base, "a", "a"))
+expressions <- list(
+	db1$i1,
+	db1$v1
+)
 
-statement <- session$query(test$b)$SQL()
-expect_equal(statement, sprintf(statement.base, "b", "b"))
+compiled <- list(
+	list("i1", "i1"),
+	list("v1", "v1")
+)
 
-session$finish()
+for (i in seq_along(expressions)) {
+	statement <- session$query(expressions[[i]])$SQL()
+	expect_equal(statement, do.call(sprintf, c(statement.base, compiled[[i]])))
+}
+
+#statement <- session$query(db1$i1)$SQL()
+#expect_equal(statement, sprintf(statement.base, "i1", "i1"))
+#
+#statement <- session$query(test$v1)$SQL()
+#expect_equal(statement, sprintf(statement.base, "v1", "v1"))

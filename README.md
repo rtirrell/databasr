@@ -44,3 +44,4 @@ databasr builds on these as much as possible, and as such, we are aiming at what
 * Unified approach to aliasing?
 * Self-JOINs.
 * Tests for GROUP BY and HAVING, as well as session management.
+* Use plyr in some cases.
