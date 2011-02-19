@@ -1,4 +1,4 @@
-context("Testing introspection of tables")
+context("Testing introspection of table")
 
 expect_is(db1, "IntrospectedTable")
 expect_equal(db1$.key, 1)

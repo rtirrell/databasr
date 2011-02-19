@@ -1,4 +1,4 @@
-context("Testing compliation of aliases")
+context("Testing compliation of alias")
 
 expressions <- list(
 	list(db1$i1, db2$i1),

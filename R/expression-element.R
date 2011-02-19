@@ -1,6 +1,6 @@
 Element <- setRefClass('Element',
 	contains = c(
-		'SQLObject'
+		"SQLObject"
 	),
 	methods = list(
 		initialize = function() {
@@ -9,20 +9,15 @@ Element <- setRefClass('Element',
 	)
 )
 
-Scalar <- setRefClass('Scalar',
+SelectableElement <- setRefClass("SelectableElement",
 	contains = c(
-		'Element'
-	),
-	methods = list(
-		initialize = function() {
-			callSuper()
-		}
+		"Element"
 	)
 )
 
-Tuple <- setRefClass("Tuple",
+TupleElement <- setRefClass("TupleElement",
 	contains = c(
-		"Scalar"
+		"SelectableElement"
 	),
 	methods = list(
 		initialize = function(...) {
@@ -32,101 +27,100 @@ Tuple <- setRefClass("Tuple",
 		}
 	)
 )
-tuple <- function(...) Tuple$new(...)
+tuple <- function(...) TupleElement$new(...)
 
-setMethod('%in%', c('Scalar', 'ANY'), function(x, table) {
-	if (!inherits(table, "Tuple")) table <- do.call(Tuple$new, as.list(table))
-	NegatableBinaryOperator$new("IN", x, table)
+setMethod('%in%', c("SelectableElement", 'ANY'), function(x, table) {
+	if (!inherits(table, "TupleElement")) table <- do.call(TupleElement$new, as.list(table))
+	NegatableBinaryOperatorElement$new("IN", x, table)
 })
 
-setMethod('+', c('Scalar', 'ANY'), function(e1, e2) {
-	if (missing(e2)) PostfixOperator$new("ASC", e1)
-	else BinaryOperator$new("+", e1, e2)
+setMethod('+', c("SelectableElement", 'ANY'), function(e1, e2) {
+	if (missing(e2)) PostfixOperatorElement$new("ASC", e1)
+	else BinaryOperatorElement$new("+", e1, e2)
 })
 
-setMethod('-', c('Scalar', 'ANY'), function(e1, e2) {
-	if (missing(e2)) PostfixOperator$new("DESC", e1)
-	else BinaryOperator$new("-", e1, e2)
+setMethod('-', c("SelectableElement", 'ANY'), function(e1, e2) {
+	if (missing(e2)) PostfixOperatorElement$new("DESC", e1)
+	else BinaryOperatorElement$new("-", e1, e2)
 })
 
-setMethod('<', c('Scalar', 'ANY'), function(e1, e2) {
-	BinaryOperator$new("<", e1, e2)
+setMethod('<', c("SelectableElement", 'ANY'), function(e1, e2) {
+	BinaryOperatorElement$new("<", e1, e2)
 })
 
-setMethod('>', c('Scalar', 'ANY'), function(e1, e2) {
-	BinaryOperator$new(">", e1, e2)
+setMethod('>', c("SelectableElement", 'ANY'), function(e1, e2) {
+	BinaryOperatorElement$new(">", e1, e2)
 })
 
-setMethod('==', c('Scalar', 'ANY'), function(e1, e2) {
-	NegatableBinaryOperator$new("=", e1, e2)
+setMethod('==', c("SelectableElement", 'ANY'), function(e1, e2) {
+	NegatableBinaryOperatorElement$new("=", e1, e2)
 })
 
-setMethod('!=', c('Scalar', 'ANY'), function(e1, e2) {
-	NegatableBinaryOperator$new("=", e1, e2, TRUE)
+setMethod('!=', c("SelectableElement", 'ANY'), function(e1, e2) {
+	NegatableBinaryOperatorElement$new("=", e1, e2, TRUE)
 })
 
-setMethod('&', c('Scalar', 'ANY'), function(e1, e2) {
-	BinaryOperator$new("AND", e1, e2)
+setMethod('&', c("SelectableElement", 'ANY'), function(e1, e2) {
+	BinaryOperatorElement$new("AND", e1, e2)
 })
 
-setMethod('|', c('Scalar', 'ANY'), function(e1, e2) {
-	BinaryOperator$new("OR", e1, e2)
+setMethod('|', c("SelectableElement", 'ANY'), function(e1, e2) {
+	BinaryOperatorElement$new("OR", e1, e2)
 })
 
 ##
-# Functions.
+# FunctionElements.
 ##
-setMethod('max', 'Scalar', function(x) {
-	Function$new('MAX', x)
+setMethod('max', "SelectableElement", function(x) {
+	FunctionElement$new('MAX', x)
 })
 
-setMethod('min', 'Scalar', function(x) {
-	Function$new('MIN', x)
+setMethod('min', "SelectableElement", function(x) {
+	FunctionElement$new('MIN', x)
 })
 
-setMethod('unique', 'Scalar', function(x) {
-	Function$new('DISTINCT', x)
+setMethod('unique', "SelectableElement", function(x) {
+	FunctionElement$new('DISTINCT', x)
 })
 
 #' A \code{\link{length}} method to support generation of 'COUNT' functions.
-setMethod('length', 'Scalar', function(x) {
-	Function$new('COUNT', x)
+setMethod('length', "SelectableElement", function(x) {
+	FunctionElement$new('COUNT', x)
 })
 
-setMethod('tolower', 'Scalar', function(x) {
-	Function$new('LOWER', x)
+setMethod('tolower', "SelectableElement", function(x) {
+	FunctionElement$new('LOWER', x)
 })
 
-setMethod('toupper', 'Scalar', function(x) {
-	Function$new('UPPER', x)
+setMethod('toupper', "SelectableElement", function(x) {
+	FunctionElement$new('UPPER', x)
 })
 
 # TODO: haven't yet decided how to work with concat. Probably using paste.
-#setMethod('paste', c('Scalar'), function(x, ..., sep = '', collapse = NULL) {
-#	if (sep == '') Function$new(func = 'CONCAT', ...)
-#	Function$new('CONCACT_WS', sep, ...)
+#setMethod('paste', c("SelectableElement"), function(x, ..., sep = '', collapse = NULL) {
+#	if (sep == '') FunctionElement$new(func = 'CONCAT', ...)
+#	FunctionElement$new('CONCACT_WS', sep, ...)
 #})
 
-`[.Scalar` <- function(x, i, j, drop = FALSE) {
-	if (!inherits(x$type, "StringType"))
+`[.SelectableElement` <- function(x, i, j, drop = FALSE) {
+	if (!inherits(x$type, "StringType")) {
+		# But we really can, and I'm not even sure it's bad form.
 		stop("Cannot index a non-string field with `[`.")
-	# TODO: maybe just use from, to as args and figure the RDBMS-specific args later.
-	Function$new("SUBSTRING", x, i[1], i[length(i)] - i[1] + 1)
+	}
+	FunctionElement$new("SUBSTRING", x, i[1], i[length(i)] - i[1] + 1)
 }
 
-Function <- setRefClass('Function',
+OperFunElement <- setRefClass("OperFunElement",
 	contains = c(
-		'Scalar'
+		"SelectableElement"
 	),
 	fields = c(
-		'func',
-		'alias'
+		"alias"
 	),
 	methods = list(
-		initialize = function(func = NULL, ...) {
+		initialize = function(alias = NULL) {
+			initFields(alias = alias)
 			callSuper()
-			initFields(func = func, alias = NULL)
-			addChildren(...)
 		},
 		as = function(name) {
 			alias <<- name
@@ -135,12 +129,28 @@ Function <- setRefClass('Function',
 	)
 )
 
-Operator <- setRefClass('Operator',
+FunctionElement <- setRefClass('FunctionElement',
 	contains = c(
-		'Scalar'
+		"OperFunElement"
 	),
 	fields = c(
-		'operator'
+		"func"
+	),
+	methods = list(
+		initialize = function(func = NULL, ...) {
+			callSuper()
+			initFields(func = func)
+			addChildren(...)
+		}
+	)
+)
+
+OperatorElement <- setRefClass("OperatorElement",
+	contains = c(
+		"OperFunElement"
+	),
+	fields = c(
+		"operator"
 	),
 	methods = list(
 		initialize = function(operator = NULL) {
@@ -150,10 +160,10 @@ Operator <- setRefClass('Operator',
 	)
 )
 
-# TODO: add alias to BinaryOperator, or alias on Operator.
-BinaryOperator <- setRefClass('BinaryOperator',
+# TODO: add alias to BinaryOperatorElement, or alias on OperatorElement.
+BinaryOperatorElement <- setRefClass("BinaryOperatorElement",
 	contains = c(
-		'Operator'
+		"OperatorElement"
 	),
 	methods = list(
 		initialize = function(operator = NULL, left = NULL, right = NULL) {
@@ -164,17 +174,21 @@ BinaryOperator <- setRefClass('BinaryOperator',
 	)
 )
 
-# Class for any binary operator (==, IN, IS) that is negatable (i.e. to !=, NOT IN, IS NOT).
-NegatableBinaryOperator <- setRefClass('NegatableBinaryOperator',
+
+#' Class for any binary operator (==, IN, IS) that is negatable (i.e. to !=, NOT IN, IS NOT).
+#' 
+#' I know this name is a little on the long side, but I like consistency.
+NegatableBinaryOperatorElement <- setRefClass("NegatableBinaryOperatorElement",
 	contains = c(
-		'BinaryOperator'
+		"BinaryOperatorElement"
 	),
 	fields = c(
-		'negated'
+		"negated"
 	),
 	methods = list(
 		initialize = function(operator = NULL, left = NULL, right = NULL, negated = FALSE) {
 			callSuper(operator = operator, left = left, right = right)
+			# TODO: use identical?
 			suppressWarnings({
 				if (operator == "=" && is.na(right)) operator <<- "IS"
 			})
@@ -183,15 +197,15 @@ NegatableBinaryOperator <- setRefClass('NegatableBinaryOperator',
 	)
 )
 
-setMethod("!", "NegatableBinaryOperator", function(x) {
+setMethod("!", "NegatableBinaryOperatorElement", function(x) {
 	x$negated <- !x$negated
 })
 
 
 # Class for any operator that is applied postfix to its argument (e.g. DESC or ASC).
-PostfixOperator <- setRefClass("PostfixOperator",
+PostfixOperatorElement <- setRefClass("PostfixOperatorElement",
 	contains = c(
-		"Operator"
+		"OperatorElement"
 	),
 	methods = list(
 		initialize = function(operator = NULL, left = NULL) {

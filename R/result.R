@@ -56,7 +56,7 @@ Result <- setRefClass("Result",
 		# Otherwise, we return the underlying data frame.
 		all = function() {
 			get(-1)
-			if (!getOption('mutable')) return(getResult())
+			if (!getOption("mutable")) return(getResult())
 			return(.self)
 		},
 		
@@ -70,21 +70,21 @@ Result <- setRefClass("Result",
 		},
 		
 		isStarted = function() {
-			return(getOption('started'))
+			return(getOption("started"))
 		},
 		
 		isFinished = function() {
-			return(getOption('finished'))
+			return(getOption("finished"))
 		},
 		
 		getAffectedRowCount = function() {
-			if (isFinished()) return(getOption('affected.row.count'))
+			if (isFinished()) return(getOption("affected.row.count"))
 			else if (isStarted()) return(dbGetRowCount(result.set))
 			return(NA)
 		},
 		
 		getStatement = function() {
-			return(str_c(SQL, '\n'))
+			return(str_c(SQL, "\n"))
 		},
 		
 		#' Fetch results from the result set.
@@ -93,7 +93,7 @@ Result <- setRefClass("Result",
 		#'   more information on the default for this, which is a class-level field)
 		#' @param retain whether to append to the old result or discard it completely
 		get = function(n, retain = TRUE) {
-			if (missing(n)) n <- getOption('fetch.size')
+			if (missing(n)) n <- getOption("fetch.size")
 			
 			if (!isStarted()) sendQuery()
 			
@@ -118,10 +118,10 @@ Result <- setRefClass("Result",
 		
 		finish = function() {
 			if (getOption("finished")) {
-				#warning('Result has already been finished.')
+				#warning("Result has already been finished.")
 			} else {
 				
-				if (isDirty()) warning('Finishing result with pending mutations.')
+				if (isDirty()) warning("Finishing result with pending mutations.")
 				pending <<- list()
 				
 				setOptions(affected.row.count = getAffectedRowCount())
@@ -137,15 +137,15 @@ Result <- setRefClass("Result",
 		
 		# I'm not sure when to use dbCommit, and when to send the equivalent query.
 		flush = function() {
-			flush.connection <- session$request('flush')
-			dbSendQuery(flush.connection$connection, 'START TRANSACTION;')
+			flush.connection <- session$request("flush")
+			dbSendQuery(flush.connection$connection, "START TRANSACTION;")
 			for (mutation in pending) {
 				mutation.SQL <- mutation$SQL()
 				#debug(session, mutation.SQL)
 				dbSendQuery(flush.connection$connection, mutation.SQL)
 			}
 			
-			dbSendQuery(flush.connection$connection, 'COMMIT;')
+			dbSendQuery(flush.connection$connection, "COMMIT;")
 			pending <<- list()
 			session$release(flush.connection)
 		},
@@ -162,15 +162,15 @@ Result <- setRefClass("Result",
 				join.clauses <- statement$.children$joins
 					
 				if (!is.null(from.clause) && length(from.clause$tables) > 1) 
-					stop.message <- 'Cannot alter result FROM multiple tables.'
+					stop.message <- "Cannot alter result FROM multiple tables."
 				else if (!is.null(join.clauses) && join.clauses$hasChildren())
-					stop.message <- 'Cannot alter JOIN result.'
+					stop.message <- "Cannot alter JOIN result."
 				introspected <<- from.clause$tables[[1]]
 				
 				table.keys <- sapply(introspected$.fields[introspected$.key], function(k) k$name)
 				select.keys <- sapply(statement$.children$select$.children, function(k) k$name)
 				if (length(introspected$.key) == 0 || !haveSameElements(table.keys, select.keys))
-					stop.message <- 'Cannot alter result lacking complete primary key.'
+					stop.message <- "Cannot alter result lacking complete primary key."
 
 				statement$restore()
 				if (!is.null(stop.message)) stop(stop.message)
@@ -195,9 +195,9 @@ Result <- setRefClass("Result",
 #' TODO: as far as I know, there's no way to allow result.object$field[10] <- 4 to be intercepted
 #'   to the tune of ("field", 4). We could also overload `[[<-` to allow simpler (e.g., 
 #'   "[['field']] <- value" column-wise replacement, versus "[, 'field'] <- value".
-setMethod('$', 'Result', function(x, name) {
-	if (name %in% names(x[['result']])) x[['result']][, name]
-	else findMethods('$')$envRefClass(x, as.character(name))
+setMethod("$", "Result", function(x, name) {
+	if (name %in% names(x[["result"]])) x[["result"]][, name]
+	else findMethods("$")$envRefClass(x, as.character(name))
 })
 
 #' Replace value(s) in the underlying data frame.
@@ -206,8 +206,8 @@ setMethod('$', 'Result', function(x, name) {
 `[<-.Result` <- function(result, i, j, value) {
 	if (!result$isStarted()) 
 		stop(str_c(
-			'Attempting to modify result that has not been populated.',
-			'Either access the result to trigger fetching or get() manually.', sep = ' '
+			"Attempting to modify result that has not been populated.",
+			"Either access the result to trigger fetching or get() manually.", sep = " "
 		))
 		
 	if (missing(i)) i = seq_len(nrow(result$result))

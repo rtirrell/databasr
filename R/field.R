@@ -1,7 +1,7 @@
 #' Class representing a database field.
 IntrospectedField <- setRefClass('IntrospectedField',
 	contains = c(
-		'Scalar'
+		"SelectableElement"
 	),
 	fields = c(
 		'table',
@@ -14,6 +14,11 @@ IntrospectedField <- setRefClass('IntrospectedField',
 			callSuper()
 		},
 		
+		setTable = function(new.table) {
+			table <<- new.table
+			.self
+		},
+		
 		asField = function() {
 			Field$new(.self)
 		}
@@ -23,14 +28,14 @@ IntrospectedField <- setRefClass('IntrospectedField',
 #' Represents a field in an SQL expression. Since we can't multiply inherit or mixin
 #' directly, we have \code{\link{IntrospectedField}} inherit from \code{\link{SQLObject}},
 #' even though an \code{\link{IntrospectedField}} may never occur in an expression.
-Field <- setRefClass('Field',
+Field <- setRefClass("Field",
 	contains = c(
-		'IntrospectedField'
+		"IntrospectedField"
 	),
 	# Still trying to figure out where alias should go, and if it's best suited to
 	# being a field versus an option versus another class.
 	fields = c(
-		'alias'
+		"alias"
 	),
 	methods = list(
 		initialize = function(field) {

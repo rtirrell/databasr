@@ -1,3 +1,4 @@
+#' Aliasing of statements?
 Statement <- setRefClass('Statement',
 	contains = c(
 		'SQLObject'
@@ -10,7 +11,36 @@ Statement <- setRefClass('Statement',
 	methods = list(
 		initialize = function(session = NULL) {
 			initFields(session = session)
-			return(callSuper())
+			callSuper()
+		},
+		
+		restore = function() {
+			.self
+		},
+		
+		# I think that ORDER could also be moved to the superclass?
+		limit = function(n) {
+			if (is.null(.children$limit)) .children$limit <<- LimitClause$new(.self)
+			.children$limit$setChildren(n)
+			.self
+		},
+		
+		offset = function(n) {
+			if (is.null(.children$offset)) .children$offset <<- OffsetClause$new(.self)
+			.children$offset$setChildren(n)
+			.self
+		},
+		
+		
+		SQL = function() {
+			prepare()
+			
+			formatter <- Formatter$new()
+			compiler <- MySQLCompiler$new(.self, formatter)
+			statement <- compiler$compile()
+			
+			restore()
+			statement
 		}
 	)
 )
@@ -41,12 +71,6 @@ UpdateStatement <- setRefClass('UpdateStatement',
 		where = function(...) {
 			.children$where$addChildren(...)
 			return(.self)
-		},
-		SQL = function() {
-			formatter <- Formatter$new()
-			compiler <- MySQLCompiler$new(.self, formatter)
-			compiler$compile()
-			#debug(logger, statement)
 		}
 	)
 )
@@ -84,9 +108,9 @@ SelectStatement <- setRefClass('SelectStatement',
 		},
 		
 		join = function(...) {
-			if (!'joins' %in% names(.children)) .children$joins <<- ClauseList$new(.self)
-			join.clause <- JoinClause$new(.self)
-			.children$joins$addChildren(join.clause$addChildren(...))
+			if (is.null(.children$joins)) .children$joins <<- ClauseList$new(.self)
+			join.clause <- JoinClause$new(.children$joins)
+			.children$joins$addChild(join.clause$addChildren(...))
 			.self
 		},
 		
@@ -98,32 +122,20 @@ SelectStatement <- setRefClass('SelectStatement',
 		},
 		
 		group = function(...) {
-			if (!"group" %in% names(.children)) .children$group <<- GroupClause$new(.self)
+			if (is.null(.children$group)) .children$group <<- GroupClause$new(.self)
 			.children$group$addChildren(...)
 			.self
 		},
 		
 		having = function(...) {
-			if (!"having" %in% names(.children)) .children$having <<- HavingClause$new(.self)
+			if (is.null(.children$having)) .children$having <<- HavingClause$new(.self)
 			.children$having$addChildren(...)
 			.self
 		},
 		
 		order = function(...) {
-			if (!"order" %in% names(.children)) .children$order <<- OrderClause$new(.self)
+			if (is.null(.children$order)) .children$order <<- OrderClause$new(.self)
 			.children$order$addChildren(...)
-			.self
-		},
-		
-		limit = function(n) {
-			if (!"limit" %in% names(.children)) .children$limit <<- LimitClause$new(.self)
-			.children$limit$setChildren(n)
-			.self
-		},
-		
-		offset = function(n) {
-			if (!"offset" %in% names(.children)) .children$offset <<- OffsetClause$new(.self)
-			.children$offset$setChildren(n)
 			.self
 		},
 		
@@ -134,6 +146,14 @@ SelectStatement <- setRefClass('SelectStatement',
 		count = function() {
 			.children$select$setOptions(count = TRUE)
 			.self
+		},
+		
+		all = function(...) {
+			execute(...)$all()
+		},
+		
+		one = function(...) {
+			execute(...)$one()
 		},
 		
 		# TODO: potential design decision here. prepare is database-agnostic preparation.
@@ -160,24 +180,41 @@ SelectStatement <- setRefClass('SelectStatement',
 		
 		execute = function(...) {
 			Result$new(session = session, statement = .self, ...)
-		},
+		}
 		
-		SQL = function() {
-			prepare()
-			
-			formatter <- Formatter$new()
-			compiler <- MySQLCompiler$new(.self, formatter)
-			statement <- compiler$compile()
-			
-			restore()
-			
-			statement
+	)
+)
+
+StatementOperator <- setRefClass("StatementOperator",
+	contains = c(
+		"Statement"
+	),
+	fields = c(
+		"operator"
+	),
+	methods = list(
+		initialize = function(operator = NULL, left = NULL, right = NULL) {
+			initFields(operator = operator)
+			callSuper(session = left$session)
+			addChildren(left, right)
 		}
 	)
 )
 
-setMethod("[", c("SelectStatement", "ANY", "ANY"), function(x, i, ...) {
+setMethod("[", c("Statement", "ANY", "ANY"), function(x, i, ...) {
 	x$limit(i[length(i)] - i[1] + 1)$offset(i[1] - 1)
+})
+
+setMethod("|", c("SelectStatement", "SelectStatement"), function(e1, e2) {
+	StatementOperator$new(operator = "UNION", left = e1, right = e2)
+})
+
+setMethod("&", c("SelectStatement", "SelectStatement"), function(e1, e2) {
+	StatementOperator$new(operator = "INTERSECT", left = e1, right = e2)
+})
+
+setMethod("-", c("SelectStatement", "SelectStatement"), function(e1, e2) {
+	StatementOperator$new(operator = "EXCEPT", left = e1, right = e2)
 })
 
 Transaction <- setRefClass('Transaction',

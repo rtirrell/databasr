@@ -1,4 +1,4 @@
-context("Testing mutation of Results")
+context("Testing mutation of Result")
 
 query <- session$query(db1$v1)
 expect_error(query$execute(mutable = TRUE)$all())
@@ -7,7 +7,7 @@ result <- session$query(db1$i1)$execute(mutable = TRUE)$all()
 expect_is(result, "Result")
 expect_true(result$getOption("mutable"))
 
-random <- sample(1:10000, 1)
+random <- sample(1:10 * 100000, 1)
 result[1, ] <- random
 expect_equal(result[1, ], random)
 expect_equal(result$result[1, ], random)

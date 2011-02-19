@@ -42,6 +42,8 @@ databasr builds on these as much as possible, and as such, we are aiming at what
 
 ## TODO
 * Unified approach to aliasing?
-* Self-JOINs.
+* Self-JOINs. Let's think about this one...
+  When a JOIN a table that exists in another JOIN clause, alias that table and set the table of
+  all fields in the expression that table exists in to the aliased table.
 * Tests for GROUP BY and HAVING, as well as session management.
 * Use plyr in some cases.

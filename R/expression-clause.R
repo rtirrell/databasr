@@ -12,11 +12,14 @@ Clause <- setRefClass('Clause',
 			callSuper(...)
 		},
 		
-		addTable = function(...) {
-			for (table in list(...)) {
-				# TODO: don't exactly recall where the NULL check comes from?
-				if (!is.null(table) && !hasTable(table)) tables <<- c(tables, table)
-			}
+		
+		addTable = function(table) {
+			# TODO: don't exactly recall where the NULL check comes from?
+			if (!is.null(table) && !hasTable(table)) tables <<- c(tables, table)
+			.self
+		},
+		addTables = function(...) {
+			for (table in list(...)) addTable(table)
 			.self
 		},
 		
@@ -43,7 +46,10 @@ ClauseList <- setRefClass('ClauseList',
 	
 	methods = list(
 		getTableNames = function() {
-			return(unlist(sapply(.children, function(c) c$getTableNames())))
+			unlist(sapply(.children, function(c) c$getTableNames()))
+		},
+		hasTable = function(table) {
+			any(unlist(sapply(.children, function(c) c$hasTable(table))))
 		}
 	)
 )
@@ -71,7 +77,7 @@ SelectClause <- setRefClass('SelectClause',
 			} else {
 				# Otherwise, child is some expression. Extract the Fields and add their tables.
 				child.fields <- child$findChildren("Field")
-				for (field in child.fields) addTable(field$table)
+				for (field in child.fields) addTables(field$table)
 				callSuper(child)
 			}
 		},
@@ -83,7 +89,7 @@ SelectClause <- setRefClass('SelectClause',
 			field.names <- unlist(sapply(findChildren('Field'), function(c) c$name))
 			if (length(field.names) == length(unique(field.names))) setOptions(short.alias = TRUE)
 			
-			return(callSuper())
+			callSuper()
 		}
 	)
 )
@@ -103,23 +109,29 @@ FromClause <- setRefClass('FromClause',
 			callSuper(...)
 		},
 		
-		# Accepts only Tables and literals.
+		# Accepts only Tables.
 		addChild = function(child, name) {
-			if (inherits(child, 'IntrospectedTable')) addTable(child)
+			addTable(child)
 			callSuper(child$asTable())
 		},
 		
 		# Add any table named in select that is not in joins to the from clause. We may also want to
 		# look at the where clause.
 		prepare = function() {
-			if (!is.null(.parent$.children$joins))
-				join.table.names <- .parent$.children$joins$getTableNames()
-			else join.table.names <- ''
-			select.tables <- .parent$.children$select$tables
 			table.names <- getTableNames()
-			for (select.table in select.tables) {
-				if (!select.table$getName() %in% join.table.names) {
-					if (!select.table$getName() %in% table.names) addChildren(select.table)
+			if (!is.null(.parent$.children$joins))
+				table.names <- c(table.names, .parent$.children$joins$getTableNames())
+
+			clause.tables <- .parent$.children$select$tables
+			
+			if (!is.null(.parent$.children$where))
+				clause.tables <- c(clause.tables, .parent$.children$where$tables)
+			
+			for (clause.table in clause.tables) {
+				if (!clause.table$getName() %in% table.names) {
+					if (!hasTable(clause.table)) {
+						addChild(clause.table)
+					}
 				}
 			}
 			
@@ -132,12 +144,12 @@ FromClause <- setRefClass('FromClause',
 #' 
 #' TODO: need to think about how to handle self-joins automatically. Lots of things won't work
 #' as-is.
-JoinClause <- setRefClass('JoinClause',
+JoinClause <- setRefClass("JoinClause",
 	contains = c(
-		'Clause'
+		"Clause"
 	),
 	fields = c(
-		'type'
+		"type"
 	),
 	methods = list(
 		initialize = function(...) {
@@ -148,13 +160,13 @@ JoinClause <- setRefClass('JoinClause',
 		addChildren = function(...) {
 			callSuper(...)
 			args <- list(...)
-			if (inherits(args[[1]], "Field")) {
-				addTable(args[[1]]$table)
-				insertChild(args[[1]]$table$asTable(), 1)
-			} else if (inherits(args[[1]], "Scalar")) {
-				fields <- args[[1]]$findChildren("Field")
-				addTable(fields[[1]]$table)
-				insertChild(fields[[1]]$table$asTable(), 1)
+			
+			if (inherits(args[[1]], "SelectableElement")) {
+				table <- args[[1]]$findChildren("Field", TRUE)[[1]]$table
+				addTable(table)
+				# TODO: this should probably be added in prepare. At that point, we can tell if this is the
+				# correct table (think JOIN ON CONCAT(other.table, this.table)).
+				insertChild(table$asTable(), 1)
 			}
 			.self
 		},
@@ -201,6 +213,11 @@ BindingClause <- setRefClass('BindingClause',
 				else return(.self)
 			}
 			callSuper(args)
+		},
+		addChild = function(child, name) {
+			fields <- child$findChildren("Field")
+			lapply(fields, function(f) addTable(f$table))
+			callSuper(child, name)
 		}
 	)
 )
@@ -234,7 +251,7 @@ UpdateClause <- setRefClass('UpdateClause',
 		addChild = function(child, name) {
 			if (inherits(child, "IntrospectedTable")) {
 				insertChild(child$asTable(), 1)
-				addTable(child)
+				addTables(child)
 			} else callSuper(child, name)
 		}
 	)

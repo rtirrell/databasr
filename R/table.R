@@ -1,6 +1,6 @@
-IntrospectedTable <- setRefClass('IntrospectedTable',
+IntrospectedTable <- setRefClass("IntrospectedTable",
 	contains = c(
-		'Element'
+		"Element"
 	),
 	fields = c(
 		# Session that introspected this table.
@@ -24,7 +24,7 @@ IntrospectedTable <- setRefClass('IntrospectedTable',
 				.session = .session, .name = .name, .database = .database, .key = .key
 			)
 			callSuper()
-			# TODO: I think that all RDBMS use "." as an identifier separator, but need to check.
+			# TODO: I think that all DBMS use "." as an identifier separator, but need to check.
 			if (is.null(.database) && str_detect(.name, fixed("."))) {
 				split.name <- unlist(str_split(.name, fixed(".")))
 				.database <<- split.name[1]
@@ -51,17 +51,46 @@ IntrospectedTable <- setRefClass('IntrospectedTable',
 		
 		asTable = function() {
 			Table$new(.self)
+		},
+		
+		as = function(name) {
+			Table$new(.self)$as(name)
 		}
 	)
 )
 
-Table <- setRefClass('Table',
+#' Represents a table in a query.
+#' 
+#' I think it's okay that alias is redefined here, as we also add additional behavior.
+Table <- setRefClass("Table",
 	contains = c(
-		'IntrospectedTable'
+		"IntrospectedTable"
+	),
+	fields = c(
+		".alias"
 	),
 	methods = list(
 		initialize = function(table) {
 			import(table)
+			initFields(.alias = NULL)
+			.fields <<- sapply(.fields, function(f) f$asField()$setTable(.self))
+			.self
+		},
+		
+		#' Alias this table.
+		#' 
+		#' Future thoughts: allow no name to be specified, in which case sequential names (tt1, tt2,
+		#' ...) will be used.
+		as = function(name) {
+			.alias <<- name
+			.self
+		},
+		getCompileName = function(name) {
+			if (is.null(.alias)) getName()
+			else .alias
+		},
+		# TODO: evaluate necessity.
+		asTable = function() {
 			.self
 		}
 	)
@@ -106,6 +135,7 @@ setMethod('&', c('IntrospectedTable', 'IntrospectedTable'), function(e1, e2) {
 	return(query)
 })
 
+
 #' Introspect a database table and return an object representing that table.
 #' 
 #' @param session the \code{\link{Session}} object.
@@ -138,4 +168,10 @@ introspectTable <- function(session, table, database = NULL) {
 	if (!str_detect(table, fixed('.'))) introspected$.database <- session$database
 	session$release(connection)
 	return(introspected)
+}
+
+with.IntrospectedTable <- function(data, expr) {
+	expr <- substitute(expr)
+	if (is(data, "IntrospectedTable")) data <- data$asTable()
+	eval(expr, data$.fields, parent.frame())
 }

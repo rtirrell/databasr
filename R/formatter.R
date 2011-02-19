@@ -15,11 +15,6 @@ Formatter <- setRefClass('Formatter',
 			initFields(.lines = list(), level = 0)
 		},
 		
-		getCounter = function(counter.name) {
-			if (!counter.name %in% names(.options)) .options[[counter.name]] <<- 1
-			else .options[[counter.name]] <<- .options[[counter.name]] + 1
-		},
-		
 		getPadding = function() {
 			return(str_c(str_c(rep("  ", level), collapse = "")))
 		},

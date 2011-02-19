@@ -1,4 +1,4 @@
-context("Testing creation of Types")
+context("Testing creation of Type")
 
 type.info <- data.frame(
 	string = c(

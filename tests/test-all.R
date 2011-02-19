@@ -5,7 +5,10 @@ connection <- dbConnect("MySQL")
 
 cat("Generating random fixtures.\n")
 
-for (table in str_c("databasr_test_", 1:4)) dbRemoveTable(connection, table)
+for (table in str_c("databasr_test_", 1:4)) {
+	if (dbExistsTable(connection, table)) dbRemoveTable(connection, table)
+}
+
 dbSendQuery(connection, "CREATE TABLE `databasr_test_1` (
 	`i1` int(10),
 	`v1` varchar(255),

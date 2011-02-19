@@ -23,7 +23,14 @@ DatabasrObject <- setRefClass('DatabasrObject',
 			for (i in seq_along(opts)) .options[[opt.names[i]]] <<- opts[[i]]
 			
 			.self
+		},
+		
+		# TODO: keep counter here?
+		getCounter = function(counter.name) {
+			if (!counter.name %in% names(.options)) .options[[counter.name]] <<- 1
+			else .options[[counter.name]] <<- .options[[counter.name]] + 1
 		}
+		
 	)
 )
 
@@ -55,8 +62,11 @@ SQLObject <- setRefClass('SQLObject',
 			length(.children) != 0
 		},
 		
-		findChildren = function(class) {
+		findChildren = function(class, self = FALSE) {
 			class.children <- list()	
+			
+			if (self && inherits(.self, class)) class.children <- c(class.children, .self)
+			
 			for (child in .children) {
 				# TODO: should this be an either-or situation? As of now I can't think of a use-case for
 				# needing every child where a given class may contain other objects of that class.

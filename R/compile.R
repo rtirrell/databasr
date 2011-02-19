@@ -75,6 +75,7 @@ Compiler <- setRefClass("Compiler",
 			)
 		},
 		
+		#' Compile an alias for an expression.
 		compileAlias = function(value) {
 			if (is.null(value$alias)) {
 				fields <- value$findChildren("Field")
@@ -118,14 +119,21 @@ Compiler <- setRefClass("Compiler",
 
 		#' TODO here: possible aliasing?
 		compileTable = function(value) {
-			compileIdentifier(value$getName())
+			name <- compileIdentifier(value$getName())
+			if (!is.null(value$.alias)) str_c(name, "AS", compileIdentifier(value$.alias), sep = " ")
+			else name
 		},
 		
 		compileField = function(value) {
 			# If the value's parent is a JOIN clause, it must be JOIN ... USING ..., in which case we
-	    # want only the name of the field.
+			# want only the name of the field.
 			if (inherits(value$.parent, "JoinClause")) name <- compileIdentifier(value$name)
-			else name <- compileIdentifier(value$table$getName(), value$name)
+			else {
+				if (inherits(value$table, "Table"))
+					name <- compileIdentifier(value$table$getCompileName(), value$name)
+				else
+					name <- compileIdentifier(value$table$getName(), value$name)
+			}
 					
 			if (inherits(value$.parent, "SelectClause")) {
 				if (is.null(value$alias)) {
@@ -141,7 +149,7 @@ Compiler <- setRefClass("Compiler",
 		# Non-atomic elements.
 		##
 
-		compileTuple = function(value) {
+		compileTupleElement = function(value) {
 			str_c("(", str_c(dispatchChildren(value), collapse = ", "), ")")
 		},
 		
@@ -149,7 +157,7 @@ Compiler <- setRefClass("Compiler",
 			str_c("(", str_c(unlist(sapply(value, dispatch)), collapse = ", "), ")")
 		},
 		
-		compileFunction = function(value) {
+		compileFunctionElement = function(value) {
 			func <- str_c(value$func, "(")
 			func <- str_c(func, str_c(dispatchChildren(value), collapse = ", "), ")")
 			
@@ -160,31 +168,33 @@ Compiler <- setRefClass("Compiler",
 			else func
 		},
 		
-		compilePostfixOperator = function(value) {
+		compilePostfixOperatorElement = function(value) {
 			str_c(dispatchChildren(value), value$operator, sep = " ")
 		},
 		
-		compileBinaryOperator = function(value) {
+		compileBinaryOperatorElement = function(value, operator = value$operator) {
 			operator <- str_c(
-				dispatch(value$.children[[1]]), value$operator, dispatch(value$.children[[2]]), sep = " "
+				dispatch(value$.children[[1]]), operator, dispatch(value$.children[[2]]), sep = " "
 			)
 			if (inherits(value$.parent, "SelectClause")) 
 				str_c(operator, "AS", compileAlias(value), sep = " ")
 			else operator
 		},
 		
-		compileNegatableBinaryOperator = function(value) {
+		# TODO: problem with IS NOT NULL.
+		compileNegatableBinaryOperatorElement = function(value) {
 			if (value$negated) 
-				value$operator <- switch(value$operator, "=" = "!=", IN = "NOT IN", IS = "NOT IS")
-			compileBinaryOperator(value)
+				operator <- switch(value$operator, "=" = "!=", IN = "NOT IN", IS = "IS NOT")
+			else operator <- value$operator
+			compileBinaryOperatorElement(value, operator)
 		},
 		
 		##
 		# Clauses.
 		# 
-		# This approach should continue to work with nesting - as ".lines" on the formatter is
-		# stacklike and modifications will never be interleaved. That said, it's not yet covered by
-		# tests.
+		# This formatting approach should continue to work with nesting - as ".lines"
+		# on the formatter is stacklike and modifications will never be interleaved. 
+		# That said, it's not yet covered by tests.
 		##
 
 		compileSelectClause = function(value) {
@@ -267,24 +277,38 @@ Compiler <- setRefClass("Compiler",
 		#' Several possible approaches to deduping functions here. This is simplest.
 		compileStatement = function(value) {
 			formatter$begin()
-			if (!is.null(value$.parent)) formatter$down()$line('(', ' ')
+			# We only want to parenthetize a statement if its included in a clause or other
+			# element.
+			if (!is.null(value$.parent) && !inherits(value$.parent, "Statement")) 
+				formatter$line("(")$down()
+			
 			formatter$lines(dispatchChildren(value))
-			if (!is.null(value$.parent)) formatter$up()$line(')')
-			str_c(unlist(formatter$end()), collapse = '\n')
+			
+			if (!is.null(value$.parent) && !inherits(value$.parent, "Statement")) 
+				formatter$up()$line(")")
+			
+			str_c(unlist(formatter$end()), collapse = "\n")
 		},
 		compileSelectStatement = function(value) {
 			compileStatement(value)
 		},
 		compileUpdateStatement = function(value) {
 			compileStatement(value)
+		},
+		compileStatementOperator = function(value) {
+			formatter$begin()
+			formatter$lines(dispatchChildren(value, include = 1))
+			formatter$line(value$operator)
+			formatter$lines(dispatchChildren(value, include = 2))
+			formatter$end()
 		}
 		
 	)
 )
 
-MySQLCompiler <- setRefClass('MySQLCompiler',
+MySQLCompiler <- setRefClass("MySQLCompiler",
 	contains = c(
-		'Compiler'
+		"Compiler"
 	),
 	methods = list(
 		initialize = function(...) {
