@@ -7,43 +7,52 @@ Features currently supported to some degree on **MySQL** include:
 * Table introspection and, optionally, 'live' updates to tables.
 
 ## Status
-This is an early release, and as noted only really supports MySQL presently. 
-The backend is partially decoupled, and with some (reasonable) amount of effort could be fully
-decoupled to support other RDMBS.
+This is an early release, and the package only supports MySQL at the moment. 
+The database-specific portions are reasonably decoupled from the rest, 
+so it shouldn't be too much work to add support for other DBMSs.
+
 
 ## Details
-New releases of R (post 2.12) include a new class sytem, dubbed 'R5', that much more closely approximates the semantics of your favorite OO languages.
-databasr builds on these as much as possible, and as such, we are aiming at what is very probably a moving target.
+New releases of R (post 2.12) include a new class sytem, dubbed 'R5', that much more 
+closely approximates the semantics of an OO language. databasr builds on these as much 
+as possible, and as such, we are aiming at what is very probably a moving target.
 
-### Overview
-* Statements are represened (aptly enough) by objects inheriting from `Statement`. `Statement`
-  itself inherits from `SQLObject`, which represents any value that may be present in a query.
-* `SQLObject`, then, is little more than a generic n-ary tree structure.
-* All `SQLObject` objects have children (`.children`), which in turn contain other children, and
-  so on. Leaves may also contain R literals (`integer`, `numeric`, `TRUE`/`FALSE`/`NA`, 
-  `character`, etc.). Note here that we use `NA`, which seems to corresponding better to a RDBMS'
-  `NULL`.
-* Compilation of a statement occurs when calling the `SQL` method a statement. All `SQLObject`s 
-  have a `prepare` method, which is called down the tree to inspect other objects in the tree and
-  set behavior and values appropriately (e.g., we may infer `FROM` tables from those mentioned in 
-  other clauses). Some statements (e.g. `SelectStatement`s) will want to restore state after
-  compilation, to support reuse of the statement with further or different clauses attached, and
-  the `restore` method (which is not called down the tree) is responsible for this.
-* Tables are represented by `Table` objects. `Table` overloads the `$` operator, and checks in a
-  `.fields` list for any attribute, returning the `Field` object given by that name preferentially.
-  No checks are yet performed that a field's name does not trample on another from the class.
-* Fields are represented by `Field` objects, which also have an attribute of class `Type`
-  representing the underlying storage mode.
-* Results of `SELECT` statements are represented by `Result` objects, which perform some limited
-  (and perhaps troublesome) pseudo-intelligent fetch and update/insert operations (in-progress to
-  some degree).
+### Design Overview
+* All objects representing a value that may be present in a query inherit from `SQLObject`, which
+  provides basic n-ary tree functionality (.parent and .children).
+* Statements correspond to `Statement`, clauses to `Clause`, and elements of a clause to
+  `Element`.
+* `Session` provides session-handling, connect and disconnecting, and so on.
+* `Result` represents the results of a query (whether fetched or not) and provides limited
+  access-based fetching.
+* `IntrospectedTable` represents a table, `IntrospectedField` a field. Each of these have
+  subclasses appropriate for inclusion in a query.
+  
 
 ### A day in the life of a query
+* Generation: `statement <- session$query(...)$join(...)$where(...)`, and so on.
+* Execution: either by `statement$execute()`, `statement$all()` or `statement$one()`
+  The latter two of these just call `execute()` and fetch immediately.
+  Execution creates a new `Result` object, which calls `SQL()` on the statement it is passed.
+  * In `SQL()`, `prepare()` is first called down the tree from the parent statement.
+  * Then (and this is not implemented currently), `dbPrepare()` is called down the tree with
+    database-specific compilation information attached to an object that rides down.
+  * A instance of the `Compiler` class is created, which is passed the `Statement` object and an
+    instance of the `Formatter` class.
+    The compiler the tree and generates database-specific SQL from the constructs represented by
+    the statement and its children.
+* If called with `mutable = TRUE`, the statement is checked to see whether the result could
+  possibly be mutated (updated or inserted).
+  As rows of the result are accessed, we fetch segments of the result set. 
+  Note then that we are assuming sequential access, for now.
+  Finally, if the statement was execute with `mutable = TRUE` and it appears to be, modification
+  of the result adds an `UpdateStatement` to a list of pending mutations associated with the result
+  that can be flushed manually by calling `flush()`.
+  In the future we'll figure out some kind of flush-by-interval or flush-by-count system.
 
 ## TODO
 * Unified approach to aliasing?
-* Self-JOINs. Let's think about this one...
-  When a JOIN a table that exists in another JOIN clause, alias that table and set the table of
-  all fields in the expression that table exists in to the aliased table.
-* Tests for GROUP BY and HAVING, as well as session management.
-* Use plyr in some cases.
+* Tests for GROUP BY and HAVING.
+* Management of multiple sessions? Seems too much.
+* Adoping the SQLDF approach? Loading tables from data frames -- and then query over data frames
+  as well as introspected tables.
