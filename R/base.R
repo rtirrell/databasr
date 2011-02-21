@@ -25,7 +25,6 @@ DatabasrObject <- setRefClass('DatabasrObject',
 			.self
 		},
 		
-		# TODO: keep counter here?
 		getCounter = function(counter.name) {
 			if (!counter.name %in% names(.options)) .options[[counter.name]] <<- 1
 			else .options[[counter.name]] <<- .options[[counter.name]] + 1
@@ -35,13 +34,13 @@ DatabasrObject <- setRefClass('DatabasrObject',
 )
 
 # Base class encapsulating objects representing query constructs.
-SQLObject <- setRefClass('SQLObject',
+SQLObject <- setRefClass("SQLObject",
 	contains = c(
-		'DatabasrObject'
+		"DatabasrObject"
 	),
 	fields = c(
-		'.parent',
-		'.children'
+		".parent",
+		".children"
 	),
 	methods = list(
 		initialize = function(parent = NULL) {
@@ -90,7 +89,7 @@ SQLObject <- setRefClass('SQLObject',
 		#' @return \code{.self}
 		insertChild = function(child, where = length(.children)) {
 			.children <<- append(.children, child, after = where - 1) 
-			if (inherits(child, 'SQLObject')) child$setParent(.self)
+			if (inherits(child, "SQLObject")) child$setParent(.self)
 			.self
 		},
 		
@@ -100,7 +99,6 @@ SQLObject <- setRefClass('SQLObject',
 		#' @param name name of the object
 		#' @return \code{.self}
 		addChild = function(child, name = NULL) {
-			# TODO: prevent collapsing of arguments.
 			if (is.null(name)) .children[[length(.children) + 1]] <<- child
 			else .children[[name]] <<- child
 			if (inherits(child, "SQLObject")) child$setParent(.self)
@@ -141,13 +139,3 @@ SQLObject <- setRefClass('SQLObject',
 		}
 	)
 )
-
-#' Capitalize a string.
-#' 
-#' @param value a character vector of length one
-#' @return the capitalized
-#' @examples 
-#' capitalize("hello world") # "Hello world"
-capitalize <- function(value) {
-	str_c(toupper(str_sub(value, 1, 1)), str_sub(value, 2))
-}

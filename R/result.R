@@ -220,6 +220,7 @@ setMethod("$", "Result", function(x, name) {
 		keys <- result$result[i, result$introspected$.key, drop = FALSE]
 	}
 	
+	# result$result[]?
 	result$result <- `[<-.data.frame`(result$result, i, j, value)
 	
 	if (result$getOption("mutable")) {

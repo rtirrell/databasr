@@ -1,18 +1,22 @@
+.LIBRARIES <- list(
+	MySQL = "RMySQL"
+)
+
 #' Represents a session: a collection of connections to the same database with the same parameters.
 #' 
 #' DONE: support group for non-default group connections.
-Session <- setRefClass('Session',
+Session <- setRefClass("Session",
 	contains = c(
-		'DatabasrObject'
+		"DatabasrObject"
 	),
 	
 	fields = c(
 		"database",
-		'driver',
-		'parameters',
-		'connect.func',
-		'connections',
-		'users'
+		"driver",
+		"parameters",
+		"connect.func",
+		"connections",
+		"users"
 	),
 	
 	methods = list(
@@ -28,6 +32,8 @@ Session <- setRefClass('Session',
 			)
 			callSuper()
 			setOptions(finished = FALSE)
+			
+			require("RMySQL")
 			driver <<- dbDriver(parameters[[1]])
 			setOptions(driver = parameters[[1]])
 			
@@ -76,7 +82,7 @@ Session <- setRefClass('Session',
 		listConnections = function() {
 			for (i in seq_along(connections)) {
 				cat(sprintf(
-					'%s %s: %s\n', class(connections[[i]]), 
+					"%s %s: %s\n", class(connections[[i]]), 
 					str_c(attr(connections[[i]], 'Id'), collapse = ','), users[[i]]
 				))
 			}
@@ -91,8 +97,8 @@ Session <- setRefClass('Session',
 				warning("Session has already been finished.")
 			} else {
 				suppressMessages({
-					for (connection in connections) try(dbDisconnect(connection), silent = TRUE)
-					try(dbUnloadDriver(driver), silent = TRUE)
+					#for (connection in connections) try(dbDisconnect(connection), silent = TRUE)
+					#try(dbUnloadDriver(driver), silent = TRUE)
 				})
 			setOptions(finished = TRUE)
 			}
@@ -104,12 +110,13 @@ Session <- setRefClass('Session',
 	)
 )
 
-#' Evaluate a get query with a temporary connection. TODO: we've been warned (by check).
+#' Evaluate a get query with a temporary connection. 
 #' 
 #' @param data the \code{\link{Session}} object associated with this query.
 #' @param expr the query we are executing, a character vector of length one.
+#' @param ... ignored, only present for consistency with generic.
 #' @return the result as a data frame.
-with.Session <- function(data, expr) {
+with.Session <- function(data, expr, ...) {
 	connection <- data$request()
 	if (!is.call(expr)) expr <- substitute(expr)
 	res <- dbGetQuery(connection$connection, eval(expr, parent.frame()))

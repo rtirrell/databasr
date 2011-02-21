@@ -9,8 +9,10 @@ Description: Abstractions, wrappers and helpers for database access in R.
 License: BSD
 Depends: R (>= 2.12.0)
 LazyLoad: Yes
-Imports: stringr, testthat, RMySQL
-Collate: 'base.R' 'compile.R' 'expression-clause.R'
-    'expression-element.R' 'expression.R' 'expression-statement.R'
-    'field.R' 'formatter.R' 'result.R' 'session.R' 'table.R' 'type.R' 
+Imports: methods, stringr, testthat, RMySQL
+Collate: 'base.R' 'compile.R' 'expression.R' 'expression-clause.R'
+    'expression-element.R' 'expression-element-methods.R' 
+    'expression-statement.R' 'expression-statement-methods.R' 
+    'expression-transaction.R' 'field.R' 'formatter.R' 'result.R' 
+    'session.R' 'table.R' 'type.R' 
     'util.R' 'zzz.R'

@@ -185,9 +185,30 @@ SelectStatement <- setRefClass('SelectStatement',
 	)
 )
 
-StatementOperator <- setRefClass("StatementOperator",
+# This stuff needs some more thought.
+
+#' Generate a new `SELECT`, unbound to any session.
+#' 
+#' For example, to 
+select <- function(...) {
+	SelectStatement$new()$select(...)
+}
+
+
+OperFunStatement <- setRefClass("OperFunStatement",
 	contains = c(
 		"Statement"
+	),
+	methods = list(
+		initialize = function() {
+			callSuper()
+		}
+	)
+)
+
+OperatorStatement <- setRefClass("OperatorStatement",
+	contains = c(
+		"OperFunStatement"
 	),
 	fields = c(
 		"operator"
@@ -195,36 +216,9 @@ StatementOperator <- setRefClass("StatementOperator",
 	methods = list(
 		initialize = function(operator = NULL, left = NULL, right = NULL) {
 			initFields(operator = operator)
-			callSuper(session = left$session)
+			callSuper()
 			addChildren(left, right)
 		}
 	)
 )
 
-setMethod("[", c("Statement", "ANY", "ANY"), function(x, i, ...) {
-	x$limit(i[length(i)] - i[1] + 1)$offset(i[1] - 1)
-})
-
-setMethod("|", c("SelectStatement", "SelectStatement"), function(e1, e2) {
-	StatementOperator$new(operator = "UNION", left = e1, right = e2)
-})
-
-setMethod("&", c("SelectStatement", "SelectStatement"), function(e1, e2) {
-	StatementOperator$new(operator = "INTERSECT", left = e1, right = e2)
-})
-
-setMethod("-", c("SelectStatement", "SelectStatement"), function(e1, e2) {
-	StatementOperator$new(operator = "EXCEPT", left = e1, right = e2)
-})
-
-Transaction <- setRefClass('Transaction',
-	contains = c(
-		'SQLObject'
-	),
-	methods = list(
-		initialize = function(session) {
-			initFields(session = session)
-			callSuper()
-		}
-	)
-)
