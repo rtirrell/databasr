@@ -11,6 +11,10 @@ setMethod("!", "NegatableBinaryOperatorElement", function(x) {
 ##
 # Functions.
 ##
+setMethod("sum", "SelectableElement", function(x) {
+		FunctionElement$new("SUM", x)
+	})
+
 setMethod("max", "SelectableElement", function(x) {
 		FunctionElement$new("MAX", x)
 	})

@@ -15,7 +15,7 @@ statements <- list(
 	
 for (statement in statements) {
 	compiled <- statement$SQL()
-	all.compiled <- replicate(10, statement$SQL())
+	all.compiled <- replicate(5, statement$SQL())
 	expect_true(all(all.compiled == compiled))
 }
 

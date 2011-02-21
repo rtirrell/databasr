@@ -139,17 +139,12 @@ SelectStatement <- setRefClass('SelectStatement',
 			.self
 		},
 		
-		distinct = function() {
-			.children$select$setOptions(distinct = TRUE)
-			.self
-		},
-		count = function() {
-			.children$select$setOptions(count = TRUE)
-			.self
-		},
-		
 		all = function(...) {
 			execute(...)$all()
+		},
+		
+		first = function(...) {
+			execute(...)$first()
 		},
 		
 		one = function(...) {
@@ -157,10 +152,8 @@ SelectStatement <- setRefClass('SelectStatement',
 		},
 		
 		# TODO: potential design decision here. prepare is database-agnostic preparation.
-		# Could also add, dbPrepare for database-specific preparation. # For dbPrepare, some sort 
+		# Could also add, dbPrepare for database-specific preparation. For dbPrepare, some sort 
 		# of rider responsible for database-specific behavior tags along as we walk down the tree.
-		# Also want to consider interaction with compile* functions and their role in schemes
-		# specific to any database.
 		prepare = function() {
 			unprepared.children <<- .children
 			prepared.children <- list()
@@ -185,12 +178,12 @@ SelectStatement <- setRefClass('SelectStatement',
 	)
 )
 
-# This stuff needs some more thought.
+# This stuff needs some more thought and is untested.
 
 #' Generate a new `SELECT`, unbound to any session.
 #' 
 #' For example, to 
-select <- function(...) {
+query <- function(...) {
 	SelectStatement$new()$select(...)
 }
 

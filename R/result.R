@@ -9,8 +9,7 @@
 #' 	\item Both started and finished. It has no connection, no result set, and results.
 #' }
 #' In short, a result is started when the query is sent.
-#' A result is finished when dbHasCompleted returns TRUE.
-#' TODO: getting all could just use dbReadTable.
+#' A non-mutable result is finished when dbHasCompleted returns TRUE.
 #' 
 #' @name Result
 #' @exportClass
@@ -40,9 +39,10 @@ Result <- setRefClass("Result",
 			)
 			callSuper()
 			if (is.null(fetch.size)) fetch.size <- session$getOption("fetch.size")
-			setOptions(fetch.size = fetch.size, started = FALSE, finished = FALSE)
+			setOptions(fetch.size = fetch.size, fetched.row.count = 0, started = FALSE, finished = FALSE)
 			checkMutable(statement, mutable)
-			return(.self)
+			
+			.self
 		},
 		
 		sendQuery = function() {
@@ -56,35 +56,38 @@ Result <- setRefClass("Result",
 		# Otherwise, we return the underlying data frame.
 		all = function() {
 			get(-1)
-			if (!getOption("mutable")) return(getResult())
-			return(.self)
+			if (!getOption("mutable")) getResult()
+			else .self
 		},
 		
-		getAll = function() {
-			all()
+		first = function() {
+			get(1)
+			getResult()[1, ]
+		},
+		
+		one = function() {
+			get(2)
+			if (getAffectedRowCount() > 1) stop("More than one row in result set.")
+			getResult()[1, ]
 		},
 		
 		getResult = function() {
 			finish()
-			return(result)
-		},
-		
-		isStarted = function() {
-			return(getOption("started"))
-		},
-		
-		isFinished = function() {
-			return(getOption("finished"))
+			result
 		},
 		
 		getAffectedRowCount = function() {
-			if (isFinished()) return(getOption("affected.row.count"))
-			else if (isStarted()) return(dbGetRowCount(result.set))
-			return(NA)
+			if (getOption("finished")) getOption("affected.row.count")
+			else if (getOption("started")) dbGetRowCount(result.set)
+			else NA
+		},
+		
+		getFetchedRowCount = function() {
+			getOption("fetched.row.count")
 		},
 		
 		getStatement = function() {
-			return(str_c(SQL, "\n"))
+			str_c(SQL, "\n")
 		},
 		
 		#' Fetch results from the result set.
@@ -95,7 +98,7 @@ Result <- setRefClass("Result",
 		get = function(n, retain = TRUE) {
 			if (missing(n)) n <- getOption("fetch.size")
 			
-			if (!isStarted()) sendQuery()
+			if (!getOption("started")) sendQuery()
 			
 			if (!is.null(result) && retain) {
 				if (n == -1) {
@@ -107,9 +110,10 @@ Result <- setRefClass("Result",
 					result[1:nrow(new.result) + nrow(result), ] <<- new.result
 				}
 			} else result <<- fetch(result.set, n)
+			setOptions(fetched.row.count = getOption("fetched.row.count") + n)
 			
-			if (dbHasCompleted(result.set) && !getOption("mutable")) return(getResult())
-			return(.self)
+			if (dbHasCompleted(result.set) && !getOption("mutable")) finish()
+			.self
 		},
 		
 		isDirty = function() {
@@ -185,9 +189,12 @@ Result <- setRefClass("Result",
 )
 
 
-`[.Result` <- function(result, ...) {
-	if (!result$isStarted()) result$get()
-	return(`[.data.frame`(result$result, ...))
+
+`[.Result` <- function(result, i, j, ..., drop = FALSE) {
+	if (i > result$getOption("affected.row.count")) stop(sprintf("Index %d is out of bounds.", i))
+	delta <- max(result$getOption("fetch.size"), i - result$getOption("fetched.row.count"))
+	result$get(delta)
+	`[.data.frame`(result$result, i, j, ..., drop)
 }
 
 #' Access a field in the underlying data frame.
@@ -204,7 +211,7 @@ setMethod("$", "Result", function(x, name) {
 #' 
 #' TODO: adding rows and using dbWriteTable.
 `[<-.Result` <- function(result, i, j, value) {
-	if (!result$isStarted()) 
+	if (!result$getOption("started")) 
 		stop(str_c(
 			"Attempting to modify result that has not been populated.",
 			"Either access the result to trigger fetching or get() manually.", sep = " "
@@ -214,6 +221,7 @@ setMethod("$", "Result", function(x, name) {
 	if (missing(j)) j = seq_along(result$result)
 	
 	if (result$getOption("mutable")) {
+		# This should check affected row count.
 		if (i[length(i)] > nrow(result$result)) {
 			
 		}
@@ -240,12 +248,12 @@ setMethod("$", "Result", function(x, name) {
 			}
 		}
 	}
-	return(result)
+	result
 }
 #' \code{\link{rbind}} rows to a \code{\link{Result}} object, queueing them for insertion.
 rbind.Result <- function(result, ..., deparse.level = 1) {
 	warning("Calling 'rbind' on objects of class 'Result' is not yet supported.")
-	return(result)
+	result
 }
 
 #' Nicely format a \code{\link{Result}} object, displaying state and underyling result.
@@ -256,7 +264,7 @@ rbind.Result <- function(result, ..., deparse.level = 1) {
 setMethod('print', 'Result', function(x, nrows = 10, ...) {
 	cat("<An object of class 'Result'>\n")
 	if (is.null(x$result) || nrow(x$result) == 0) {
-		if (x$isStarted()) cat('* No results for this query.\n')
+		if (x$getOption("started")) cat('* No results for this query.\n')
 		else cat('* No results have been fetched for this query.\n')
 	} else {
 		if (nrows < nrow(x$result)) {
@@ -267,9 +275,9 @@ setMethod('print', 'Result', function(x, nrows = 10, ...) {
 			cat('* Displaying all', nrow(x$result), 'rows.\n')
 		}
 	}
-	cat('* completed: ', x$isFinished(), ', affected: ', x$getAffectedRowCount(), ' rows.', sep = '')
+	cat('* completed: ', x$getOption("finished"), ', affected: ', x$getAffectedRowCount(), ' rows', sep = '')
 	if (x$getOption("mutable")) cat(', pending: ', length(x$pending), ' mutations', sep = '')
 	cat('.\n', sep = '')
 })
 setMethod('show', 'Result', function(object) print(object))
-setMethod('dim', 'Result', function(x) return(c(nrow(x$result), ncol(x$result))))
+setMethod('dim', 'Result', function(x) c(nrow(x$result), ncol(x$result)))

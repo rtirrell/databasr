@@ -13,7 +13,7 @@ so it shouldn't be too much work to add support for other DBMSs.
 
 
 ## Details
-New releases of R (post 2.12) include a new class sytem, dubbed 'R5', that much more 
+New releases of R (post 2.12) include a new class sytem, 'R5', that more 
 closely approximates the semantics of an OO language. databasr builds on these as much 
 as possible, and as such, we are aiming at what is very probably a moving target.
 
@@ -53,8 +53,9 @@ as possible, and as such, we are aiming at what is very probably a moving target
   In the future we'll figure out some kind of flush-by-interval or flush-by-count system.
 
 ## TODO
-* Unified approach to aliasing?
+* Unified approach to aliasing.
 * Tests for GROUP BY and HAVING.
-* Management of multiple sessions? Seems too much.
+* Management of multiple sessions... seems too much.
 * Adoping the SQLDF approach? Loading tables from data frames -- and then query over data frames
   as well as introspected tables.
+* Distinct for statements, and dispatch on dots.

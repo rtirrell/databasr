@@ -9,8 +9,8 @@ expect_true(result$getOption("mutable"))
 
 random <- sample(1:10 * 100000, 1)
 result[1, ] <- random
-expect_equal(result[1, ], random)
-expect_equal(result$result[1, ], random)
+expect_equal(result$i1[1], random)
+expect_equal(result$result$i1[1], random)
 result$flush()
 
 result.df <- session$query(db1$i1)$execute()$all()
