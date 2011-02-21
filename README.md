@@ -19,7 +19,7 @@ as possible, and as such, we are aiming at what is very probably a moving target
 
 ### Design Overview
 * All objects representing a value that may be present in a query inherit from `SQLObject`, which
-  provides basic n-ary tree functionality (.parent and .children).
+  provides basic n-ary tree functionality (having `.parent` and `.children` attributes).
 * Statements correspond to `Statement`, clauses to `Clause`, and elements of a clause to
   `Element`.
 * `Session` provides session-handling, connect and disconnecting, and so on.
@@ -31,12 +31,13 @@ as possible, and as such, we are aiming at what is very probably a moving target
 
 ### A day in the life of a query
 * Generation: `statement <- session$query(...)$join(...)$where(...)`, and so on.
-* Execution: either by `statement$execute()`, `statement$all()` or `statement$one()`
+* Execution: either by `statement$execute()`, `statement$all()` or `statement$one()`.
   The latter two of these just call `execute()` and fetch immediately.
   Execution creates a new `Result` object, which calls `SQL()` on the statement it is passed.
   * In `SQL()`, `prepare()` is first called down the tree from the parent statement.
-  * Then (and this is not implemented currently), `dbPrepare()` is called down the tree with
-    database-specific compilation information attached to an object that rides down.
+  * Then (and this is not implemented currently as there appears to be no need as yet), 
+    `dbPrepare()` is called down the tree with database-specific compilation 
+    information attached to an object that rides down.
   * A instance of the `Compiler` class is created, which is passed the `Statement` object and an
     instance of the `Formatter` class.
     The compiler the tree and generates database-specific SQL from the constructs represented by
@@ -45,9 +46,10 @@ as possible, and as such, we are aiming at what is very probably a moving target
   possibly be mutated (updated or inserted).
   As rows of the result are accessed, we fetch segments of the result set. 
   Note then that we are assuming sequential access, for now.
-  Finally, if the statement was execute with `mutable = TRUE` and it appears to be, modification
-  of the result adds an `UpdateStatement` to a list of pending mutations associated with the result
-  that can be flushed manually by calling `flush()`.
+* If the statement was execute with `mutable = TRUE` and meets all of requirements 
+  (single table, full key, etc.), modification of the result adds an `UpdateStatement` 
+  to a list of pending mutations associated with the result.
+* These mutations can be flushed manually by calling `flush()`.
   In the future we'll figure out some kind of flush-by-interval or flush-by-count system.
 
 ## TODO
