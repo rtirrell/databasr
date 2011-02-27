@@ -80,7 +80,9 @@ Compiler <- setRefClass("Compiler",
 		#' Compile an alias for an expression.
 		compileAlias = function(value) {
 			if (is.null(value$alias)) {
-				operfun <- if (inherits(value, 'OperatorElement')) value$operator else value$func
+				if (inherits(value, 'OperatorElement')) operfun <- .OPERATOR.NAMES[[value$operator]] 
+				else operfun <- value$func 
+				
 				fields <- value$findChildren("Field")
 				# A field name composed this way could be duplicated. We could track field names on the 
 				# parent SELECT and perform checks. But we'd like *all* aliases to be treated the same way,

@@ -171,8 +171,14 @@ SelectStatement <- setRefClass('SelectStatement',
 			.children <<- unprepared.children
 		},
 		
+		#' If this statement has no session, then a session must be the first argument to execute.
 		execute = function(...) {
-			Result$new(session = session, statement = .self, ...)
+			args <- list(...)
+			if (is.null(session)) {
+				session.arg <- args[[1]]
+				args <- args[-1]
+			} else session.arg <- session
+			do.call(Result$new, c(session = session.arg, statement = .self, args))
 		}
 		
 	)
