@@ -14,8 +14,7 @@ Clause <- setRefClass('Clause',
 		
 		
 		addTable = function(table) {
-			# TODO: don't exactly recall where the NULL check comes from?
-			if (!is.null(table) && !hasTable(table)) tables <<- c(tables, table)
+			if (!hasTable(table)) tables <<- c(tables, table)
 			.self
 		},
 		addTables = function(...) {
@@ -86,7 +85,11 @@ SelectClause <- setRefClass('SelectClause',
 		#' 
 		#' TODO: could have a generic "apply function to children".
 		prepare = function() {
-			field.names <- unlist(sapply(findChildren('Field'), function(c) c$name))
+			field.names <- c()
+			for (field in findChildren('Field')) {
+				# Operator and function fields handle uniquely aliasing at compile-time.
+				if (!inherits(field$.parent, 'OperFunElement')) field.names <- c(field.names, field$name)
+			}
 			if (length(field.names) == length(unique(field.names))) setOptions(short.alias = TRUE)
 			
 			callSuper()
@@ -203,7 +206,7 @@ BindingClause <- setRefClass('BindingClause',
 		addChildren = function(...) {
 			args <- list(...)
 			
-			# Join this clause to an existing one.
+			# Join this clause to an existing one. Then we pass a list - which addChildren handle.
 			if (length(.children) != 0) {
 				.children[[length(.children)]] <<- BinaryOperator$new(
 					"AND", .children[[length(.children)]], args[[1]]

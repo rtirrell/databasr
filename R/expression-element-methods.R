@@ -3,8 +3,8 @@
 ##
 
 setMethod("!", "NegatableBinaryOperatorElement", function(x) {
-		x$negated <- !x$negated
-	})
+	x$negate()
+})
 
 
 
@@ -95,7 +95,7 @@ setMethod("==", c("SelectableElement", "ANY"), function(e1, e2) {
 	})
 
 setMethod("!=", c("SelectableElement", "ANY"), function(e1, e2) {
-		NegatableBinaryOperatorElement$new("=", e1, e2, TRUE)
+		NegatableBinaryOperatorElement$new("!=", e1, e2)
 	})
 
 setMethod("&", c("SelectableElement", "ANY"), function(e1, e2) {

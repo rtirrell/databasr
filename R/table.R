@@ -170,8 +170,9 @@ introspectTable <- function(session, table, database = NULL) {
 	return(introspected)
 }
 
-with.IntrospectedTable <- function(data, expr, ...) {
-	expr <- substitute(expr)
+# Either a single list
+with.IntrospectedTable <- function(data, ...) {
+	expr <- substitute(list(...))
 	if (is(data, "IntrospectedTable")) data <- data$asTable()
 	eval(expr, data$.fields, parent.frame())
 }

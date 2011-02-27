@@ -59,3 +59,6 @@ as possible, and as such, we are aiming at what is very probably a moving target
 * Adoping the SQLDF approach? Loading tables from data frames -- and then query over data frames
   as well as introspected tables.
 * Distinct for statements, and dispatch on dots.
+* Using with in query to generate SELECTs.
+* session$query(with(db1, i1, v1, concat(v1, '4')))$SQL()
+  SELECT\n  `user_rpt`.`databasr_test_1`.`i1` AS `databasr_test_1_i1`, `user_rpt`.`databasr_test_1`.`v1` AS `databasr_test_1_v1`, CONCAT(`user_rpt`.`databasr_test_1`.`v1` AS `databasr_test_1_v1`, '4') AS `concat_v1`\nFROM\n  `user_rpt`.`databasr_test_1`;"

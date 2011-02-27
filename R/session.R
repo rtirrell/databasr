@@ -125,3 +125,17 @@ with.Session <- function(data, expr, ...) {
 	res
 }
 	
+doWith <- function(session, query, func) {
+	connection <- session$request()
+	result <- func(connection$connection, query)
+	session$release(connection)
+	result
+}
+
+sendWith <- function(session, query) {
+	doWith(session, query, dbSendQuery)
+}
+
+getWith <- function(session, query) {
+	doWith(session, query, dbGetQuery)
+}

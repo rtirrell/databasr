@@ -102,17 +102,18 @@ NegatableBinaryOperatorElement <- setRefClass("NegatableBinaryOperatorElement",
 	contains = c(
 		"BinaryOperatorElement"
 	),
-	fields = c(
-		"negated"
-	),
 	methods = list(
-		initialize = function(operator = NULL, left = NULL, right = NULL, negated = FALSE) {
+		initialize = function(operator = NULL, left = NULL, right = NULL) {
 			callSuper(operator = operator, left = left, right = right)
-			# TODO: use identical?
-			suppressWarnings({
-				if (operator == "=" && is.na(right)) operator <<- "IS"
-			})
-			initFields(negated = negated)
+			if (identical(right, NA)) {
+				if (operator == "=") operator <<- 'IS'
+				else if (operator == "!=") operator <<- 'IS NOT'
+			}
+			.self
+		},
+		negate = function() {
+			operator <<- .NEGATABLE.OPERATOR.MAP[[operator]]
+			.self
 		}
 	)
 )

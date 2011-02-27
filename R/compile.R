@@ -50,6 +50,7 @@ Compiler <- setRefClass("Compiler",
 			formatter$finish(lines)
 		},
 		
+		#' Dispatch a compilation function based on class.
 		dispatch = function(value) {
 			method.name <- str_c("compile", capitalize(class(value)))
 			#print(str_c("Compile function name: ", method.name))
@@ -58,6 +59,7 @@ Compiler <- setRefClass("Compiler",
 			method(value)
 		},
 		
+		#' Dispatch a compilation function to children of the given value.
 		dispatchChildren = function(value, include = NULL, exclude = NULL) {
 			if (is.null(include)) {
 				indices <- seq_along(value$.children)
@@ -78,14 +80,15 @@ Compiler <- setRefClass("Compiler",
 		#' Compile an alias for an expression.
 		compileAlias = function(value) {
 			if (is.null(value$alias)) {
+				operfun <- if (inherits(value, 'OperatorElement')) value$operator else value$func
 				fields <- value$findChildren("Field")
 				# A field name composed this way could be duplicated. We could track field names on the 
 				# parent SELECT and perform checks. But we'd like *all* aliases to be treated the same way,
 				# not just all following the first (e.g., if we were to add "_n").
 				if (length(fields) == 1) 
-					compileIdentifier(str_c(tolower(value$func), "_", fields[[1]]$name))
+					compileIdentifier(str_c(tolower(operfun), "_", fields[[1]]$name))
 				else 
-					compileIdentifier(str_c(tolower(value$func), "_", formatter$getCounter(value$func)))
+					compileIdentifier(str_c(tolower(operfun), "_", formatter$getCounter(operfun)))
 			} else compileIdentifier(value$alias)
 		},
 		
@@ -172,21 +175,17 @@ Compiler <- setRefClass("Compiler",
 			str_c(dispatchChildren(value), value$operator, sep = " ")
 		},
 		
-		compileBinaryOperatorElement = function(value, operator = value$operator) {
-			operator <- str_c(
-				dispatch(value$.children[[1]]), operator, dispatch(value$.children[[2]]), sep = " "
+		compileBinaryOperatorElement = function(value) {
+			compiled <- str_c(
+				dispatch(value$.children[[1]]), value$operator, dispatch(value$.children[[2]]), sep = " "
 			)
 			if (inherits(value$.parent, "SelectClause")) 
-				str_c(operator, "AS", compileAlias(value), sep = " ")
-			else operator
+				str_c(compiled, "AS", compileAlias(value), sep = " ")
+			else compiled
 		},
 		
-		# TODO: problem with IS NOT NULL.
 		compileNegatableBinaryOperatorElement = function(value) {
-			if (value$negated) 
-				operator <- switch(value$operator, "=" = "!=", IN = "NOT IN", IS = "IS NOT")
-			else operator <- value$operator
-			compileBinaryOperatorElement(value, operator)
+			compileBinaryOperatorElement(value)
 		},
 		
 		##
