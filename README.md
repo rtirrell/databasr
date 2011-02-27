@@ -52,6 +52,7 @@ as possible, and as such, we are aiming at what is very probably a moving target
 * These mutations can be flushed manually by calling `flush()`.
 
 ## TODO
+* Distinct tuples.
 * Unified approach to aliasing - difficult given lack of multiple inheritance or mixins.
 * Tests for GROUP BY, HAVING, getWith, sendWith, compilation of aliased operators, on-demand
   fetching.
