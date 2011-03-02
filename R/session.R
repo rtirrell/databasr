@@ -1,22 +1,22 @@
 .LIBRARIES <- list(
-	MySQL = "RMySQL"
+	MySQL = 'RMySQL'
 )
 
 #' Represents a session: a collection of connections to the same database with the same parameters.
 #' 
 #' DONE: support group for non-default group connections.
-Session <- setRefClass("Session",
+Session <- setRefClass('Session',
 	contains = c(
-		"DatabasrObject"
+		'DatabasrObject'
 	),
 	
 	fields = c(
-		"database",
-		"driver",
-		"parameters",
-		"connect.func",
-		"connections",
-		"users"
+		'database',
+		'driver',
+		'parameters',
+		'connect.func',
+		'connections',
+		'users'
 	),
 	
 	methods = list(
@@ -31,13 +31,13 @@ Session <- setRefClass("Session",
 				users = list()
 			)
 			callSuper()
-			setOptions(finished = FALSE)
+			set_options(finished = FALSE)
 			
-			require("RMySQL")
+			require('RMySQL')
 			driver <<- dbDriver(parameters[[1]])
-			setOptions(driver = parameters[[1]])
+			set_options(driver = parameters[[1]])
 			
-			if (length(parameters) == 1 || "group" %in% names(parameters)) {
+			if (length(parameters) == 1 || 'group' %in% names(parameters)) {
 				connection <- request()
 				connection.info <- dbGetInfo(connection$connection)
 				database <<- connection.info$dbname
@@ -45,8 +45,8 @@ Session <- setRefClass("Session",
 			} else database <<- parameters$dbname
 			
 			driver.info <- dbGetInfo(driver)
-			if ("fetch_default_rec" %in% names(driver.info)) 
-				setOptions(fetch.size = driver.info$fetch_default_rec)
+			if ('fetch_default_rec' %in% names(driver.info)) 
+				set_options(fetch.size = driver.info$fetch_default_rec)
 			.self
 		},
 		
@@ -55,7 +55,7 @@ Session <- setRefClass("Session",
 				connections[[length(connections) + 1]] <<- do.call(dbConnect, c(driver, parameters[-1]))
 		},
 		
-		request = function(user = "anonymous") {
+		request = function(user = 'anonymous') {
 			which.unused <- which(is.na(users))
 			if (length(which.unused) > 0) {
 				users[[which.unused[1]]] <<- user
@@ -75,33 +75,35 @@ Session <- setRefClass("Session",
 		},
 		
 		release = function(connection) {
-			if (is.null(connection$index)) print(connection)
 			users[[connection$index]] <<- NA
 		},
 		
-		listConnections = function() {
+		list_connections = function() {
 			for (i in seq_along(connections)) {
 				cat(sprintf(
-					"%s %s: %s\n", class(connections[[i]]), 
+					'%s %s: %s\n', class(connections[[i]]), 
 					str_c(attr(connections[[i]], 'Id'), collapse = ','), users[[i]]
 				))
 			}
 		},
 		
-		query = function(...) {
+		select = function(...) {
 			SelectStatement$new(session = .self)$select(...)
 		},
 		
 		finish = function() {
-			if (getOption("finished")) {
-				warning("Session has already been finished.")
-			} else {
-				suppressMessages({
-					#for (connection in connections) try(dbDisconnect(connection), silent = TRUE)
-					#try(dbUnloadDriver(driver), silent = TRUE)
-				})
-			setOptions(finished = TRUE)
-			}
+			try({
+				if (get_option('finished')) {
+					warning('Session has already been finished.')
+				} else {
+					suppressMessages({
+					  for (connection in connections) 
+							try(dbDisconnect(connection), silent = TRUE)
+					#  try(dbUnloadDriver(driver), silent = TRUE)
+					})
+					set_options(finished = TRUE)
+				}
+			}, silent = TRUE)
 		},
 		
 		finalize = function() {
@@ -110,32 +112,27 @@ Session <- setRefClass("Session",
 	)
 )
 
-#' Evaluate a get query with a temporary connection. 
-#' 
-#' @param data the \code{\link{Session}} object associated with this query.
-#' @param expr the query we are executing, a character vector of length one.
-#' @param ... ignored, only present for consistency with generic.
-#' @return the result as a data frame.
-with.Session <- function(data, expr, ...) {
-	connection <- data$request()
-	if (!is.call(expr)) expr <- substitute(expr)
-	res <- dbGetQuery(connection$connection, eval(expr, parent.frame()))
-	data$release(connection)
 	
-	res
-}
-	
-doWith <- function(session, query, func) {
+do_with <- function(session, query, func) {
 	connection <- session$request()
 	result <- func(connection$connection, query)
 	session$release(connection)
 	result
 }
 
-sendWith <- function(session, query) {
-	doWith(session, query, dbSendQuery)
+send_with <- function(session, query) {
+	do_with(session, query, dbSendQuery)
 }
+sendWith <- send_with
 
-getWith <- function(session, query) {
-	doWith(session, query, dbGetQuery)
+get_with <- function(session, query) {
+	do_with(session, query, dbGetQuery)
+}
+getWith <- get_with
+
+escape <- function(session, values) {
+	connection <- session$request()
+	escaped <- dbEscapeStrings(connection$connection, values)
+	session$release(connection)
+	escaped
 }

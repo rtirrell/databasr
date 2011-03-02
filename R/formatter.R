@@ -15,11 +15,11 @@ Formatter <- setRefClass('Formatter',
 			initFields(.lines = list(), level = 0)
 		},
 		
-		getPadding = function() {
+		get_padding = function() {
 			return(str_c(str_c(rep("  ", level), collapse = "")))
 		},
 		
-		begin = function(value, padding = getPadding()) {
+		begin = function(value, padding = get_padding()) {
 			.lines[[length(.lines) + 1]] <<- character(0)
 			if (!missing(value)) line(value, padding)
 			.self
@@ -28,15 +28,15 @@ Formatter <- setRefClass('Formatter',
 		#' Begin a new line.
 		#' 
 		#' @param line new line.
-		#' @param padding padding to prepend to the line, defaults to \code{\link{getPadding}}.
+		#' @param padding padding to prepend to the line, defaults to \code{\link{get_padding}}.
 		#' @return .self
-		line = function(line, padding = getPadding()) {
+		line = function(line, padding = get_padding()) {
 			if (is.list(line)) line <- unlist(line)
 			.lines[[length(.lines)]] <<- c(.lines[[length(.lines)]], str_c(padding, line))
 			.self
 		},
 		
-		lines = function(other.lines, padding = getPadding()) {
+		lines = function(other.lines, padding = get_padding()) {
 			for (other.line in other.lines) line(other.line, padding)
 			.self
 		},
@@ -46,7 +46,7 @@ Formatter <- setRefClass('Formatter',
 		#' @param value value to add, a character vector of length one.
 		#' @param sep separator to prepend to the value, defaults to " ".
 		#' @return .self
-		toLine = function(value, sep = " ") {
+		to_line = function(value, sep = " ") {
 			last <- length(.lines[[length(.lines)]])
 			.lines[[length(.lines)]][[last]] <<- str_c(.lines[[length(.lines)]][[last]], value, sep = sep)
 			.self

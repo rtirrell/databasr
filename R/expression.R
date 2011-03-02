@@ -12,7 +12,10 @@
 	'!=' = 'not_equal',
 	'==' = 'equal',
 	'IS' = 'is',
-	'IS NOT' = 'is_not'
+	'IS NOT' = 'is_not',
+	'DISTINCT' = 'distinct',
+	'AND' = 'and',
+	'OR' = 'or'
 )
 
 .NEGATABLE.OPERATOR.MAP <- list(

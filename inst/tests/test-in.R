@@ -20,7 +20,7 @@ compiled <- list(
 )
 
 for (i in seq_along(expressions)) {
-	q <- session$query(db1$i1)$where(expressions[[i]])
+	q <- session$select(db1$i1)$where(expressions[[i]])
 	expect_equal(q$SQL(), sprintf(statement.base, compiled[[i]]))
 }
 statement.base <- prepareStatement("SELECT
@@ -43,7 +43,7 @@ compiled <- list(
 	"('3', 3), ('p', 'q')"
 )
 for (i in seq_along(expressions)) {
-	q <- session$query(db2$v1, db2$v2)$where(expressions[[i]])
+	q <- session$select(db2$v1, db2$v2)$where(expressions[[i]])
 	expect_equal(q$SQL(), sprintf(statement.base, compiled[[i]]))
 }
 	

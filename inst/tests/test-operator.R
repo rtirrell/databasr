@@ -8,9 +8,9 @@ context("Testing compilation of operator")
 #			but the operator doesn't match in our switch expression and becomes	NULL.
 #		third time: dies with NULL operator.
 statements <- list(
-	session$query(db1$i1)$where(db1$i1 != 1),
-	session$query(db1$i1, db2$i1)$from(db1)$where(db2$i1 != 1),
-	session$query(db4$v1, db2$v1)$join(db3)$where(db4$v1 != (db2$v2 == db3$i1))
+	session$select(db1$i1)$where(db1$i1 != 1),
+	session$select(db1$i1, db2$i1)$from(db1)$where(db2$i1 != 1),
+	session$select(db4$v1, db2$v1)$join(db3)$where(db4$v1 != (db2$v2 == db3$i1))
 )
 	
 for (statement in statements) {
@@ -42,6 +42,6 @@ WHERE
 )
 
 for (i in seq_along(expressions)) {
-	statement <- session$query(db3)$where(expressions[[i]])$SQL()
+	statement <- session$select(db3)$where(expressions[[i]])$SQL()
 	expect_equal(statement, do.call(sprintf, c(statement.base, compiled[[i]])))
 }

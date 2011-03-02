@@ -1,6 +1,8 @@
-prepareSQL <- function(query) {
-	str_replace_all(query, fixed("%database"), session$database)
+prepare_sql <- function(value) {
+	str_replace_all(value, fixed('%database'), session$database)
 }
 
-prepareStatement <- prepareSQL
+prepareSQL <- prepare_sql
+prepareStatement <- prepare_sql
+
 

@@ -20,15 +20,15 @@ compiled <- list(
 )
 
 for (i in seq_along(expressions)) {
-	statement <- session$query(db2)$where(expressions[[i]])$SQL()
+	statement <- session$select(db2)$where(expressions[[i]])$SQL()
 	expect_equal(statement, do.call(sprintf, c(statement.base, compiled[[i]])))
 }
 	
-#statement <- session$query(test)$where(test$a == 0 & test$b == '')$SQL()
+#statement <- session$select(test)$where(test$a == 0 & test$b == '')$SQL()
 #expect_equal(statement, sprintf(statement.base, 0, ''))
 #
-#statement <- session$query(test)$where(test$a == 10 & test$b == 'ten')$SQL()
+#statement <- session$select(test)$where(test$a == 10 & test$b == 'ten')$SQL()
 #expect_equal(statement, sprintf(statement.base, 10, 'ten'))
 #
-#statement <- session$query(test)$where(test$a == -30 & test$b == '\\n')$SQL()
+#statement <- session$select(test)$where(test$a == -30 & test$b == '\\n')$SQL()
 #expect_equal(statement, sprintf(statement.base, -30, '\\n'))

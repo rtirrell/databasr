@@ -22,7 +22,7 @@ TupleElement <- setRefClass("TupleElement",
 	methods = list(
 		initialize = function(...) {
 			callSuper()
-			addChildren(...)
+			add_children(...)
 			.self
 		}
 	)
@@ -60,7 +60,7 @@ FunctionElement <- setRefClass('FunctionElement',
 		initialize = function(func = NULL, ...) {
 			callSuper()
 			initFields(func = func)
-			addChildren(...)
+			add_children(...)
 		}
 	)
 )
@@ -89,7 +89,7 @@ BinaryOperatorElement <- setRefClass("BinaryOperatorElement",
 		initialize = function(operator = NULL, left = NULL, right = NULL) {
 			initFields()
 			callSuper(operator = operator)
-			addChildren(left, right)
+			add_children(left, right)
 		}
 	)
 )
@@ -128,7 +128,19 @@ PostfixOperatorElement <- setRefClass("PostfixOperatorElement",
 	methods = list(
 		initialize = function(operator = NULL, left = NULL) {
 			callSuper(operator = operator)
-			addChildren(left)
+			add_children(left)
+		}
+	)
+)
+
+PrefixOperatorElement <- setRefClass('PrefixOperatorElement',
+	contains = c(
+		'OperatorElement'
+	),
+	methods = list(
+		initialize = function(operator = NULL, ...) {
+			callSuper(operator = operator)
+			add_children(...)
 		}
 	)
 )

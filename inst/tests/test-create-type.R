@@ -8,7 +8,7 @@ type.info <- data.frame(
 	decimal.bytes = c(0, 1, 0, 1, 11)
 )
 for (i in seq_along(type.info)) {
-	type <- createType(type.info$string[i])
+	type <- create_type(type.info$string[i])
 	expect_is(type, 'RealType')
 	expect_equal(type$bytes, type.info$bytes[i])
 	expect_equal(type$decimal.bytes, type.info$decimal.bytes[i])
@@ -25,7 +25,7 @@ type.info <- data.frame(
 )
 
 for (i in seq_along(type.info)) {
-	type <- createType(type.info$string[i])
+	type <- create_type(type.info$string[i])
 	expect_is(type, 'IntegerType')
 	expect_equal(type$bytes, type.info$bytes[i])
 	expect_true(type$signed == type.info$signed[i])
@@ -39,7 +39,7 @@ type.info <- data.frame(
 )
 
 for (i in seq_along(type.info)) {
-	type <- createType(type.info$string[i])
+	type <- create_type(type.info$string[i])
 	expect_is(type, 'StringType')
 	expect_equal(type$bytes, type.info$bytes[i])
 }

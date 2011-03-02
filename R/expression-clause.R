@@ -13,26 +13,25 @@ Clause <- setRefClass('Clause',
 		},
 		
 		
-		addTable = function(table) {
-			if (!hasTable(table)) tables <<- c(tables, table)
+		add_table = function(table) {
+			if (!has_table(table)) tables <<- c(tables, table)
 			.self
 		},
-		addTables = function(...) {
-			for (table in list(...)) addTable(table)
+		add_tables = function(...) {
+			for (table in list(...)) add_table(table)
 			.self
 		},
 		
-		hasTables = function() {
+		has_tables = function() {
 			length(tables) > 0
 		},
 		
-		hasTable = function(table) {
-			if (all(sapply(tables, function(t) !table$equals(t)))) FALSE
-			else TRUE
+		has_table = function(table) {
+			any(vapply(tables, function(t) table$equals(t), logical(1)))
 		},
 		
-		getTableNames = function() {
-			sapply(tables, function(t) t$getName())
+		get_table_names = function() {
+			vapply(tables, function(t) t$get_name(), character(1))
 		}
 	)
 )
@@ -44,11 +43,11 @@ ClauseList <- setRefClass('ClauseList',
 	),
 	
 	methods = list(
-		getTableNames = function() {
-			unlist(sapply(.children, function(c) c$getTableNames()))
+		get_table_names = function() {
+			unlist(sapply(.children, function(c) c$get_table_names()))
 		},
-		hasTable = function(table) {
-			any(unlist(sapply(.children, function(c) c$hasTable(table))))
+		has_table = function(table) {
+			any(vapply(.children, function(c) c$has_table(table), logical(1)))
 		}
 	)
 )
@@ -65,32 +64,36 @@ SelectClause <- setRefClass('SelectClause',
 		#' Add a child to this clause's children.
 		#' 
 		#' There are three cases depending on the class of the arguments.
-		addChild = function(child, name)  {
+		add_child = function(child, name, after)  {
 			fields <- list()
-			if (inherits(child, "IntrospectedTable")) {
-				for (field in child$.fields) callSuper(field$asField())
-				addTable(child)
-			} else if (inherits(child, "Field")) {
-				callSuper(child)
-				addTable(child$table)
+			if (inherits(child, 'IntrospectedTable')) {
+				# Child is a table, add all of it's IntrospectedFields as Fields.
+				for (field in child$.fields) callSuper(field$as_field())
+				add_table(child)
+			} else if (inherits(child, 'Field')) {
+				# Child is a field - add it's parent table to tables.
+				callSuper(child, name, after)
+				add_table(child$table)
+			} else if (inherits(child, 'SQLObject')) {
+				# Child is some expression. Extract the Fields and add their tables.
+				child.fields <- child$find_children('Field')
+				for (field in child.fields) add_tables(field$table)
+				callSuper(child, name, after)
 			} else {
-				# Otherwise, child is some expression. Extract the Fields and add their tables.
-				child.fields <- child$findChildren("Field")
-				for (field in child.fields) addTables(field$table)
-				callSuper(child)
+				# Field is some literal element.
+				callSuper(I(child))
 			}
 		},
 		
 		#' If field names are unique, prefer using shorter aliases.
-		#' 
-		#' TODO: could have a generic "apply function to children".
 		prepare = function() {
 			field.names <- c()
-			for (field in findChildren('Field')) {
+			for (field in find_children('Field')) {
 				# Operator and function fields handle uniquely aliasing at compile-time.
 				if (!inherits(field$.parent, 'OperFunElement')) field.names <- c(field.names, field$name)
 			}
-			if (length(field.names) == length(unique(field.names))) setOptions(short.alias = TRUE)
+			field.counts <- table(field.names)
+			set_options(full.alias = names(field.counts)[field.counts > 1])
 			
 			callSuper()
 		}
@@ -113,17 +116,17 @@ FromClause <- setRefClass('FromClause',
 		},
 		
 		# Accepts only Tables.
-		addChild = function(child, name) {
-			addTable(child)
-			callSuper(child$asTable())
+		add_child = function(child, name, after) {
+			add_table(child)
+			callSuper(child$as_table())
 		},
 		
 		# Add any table named in select that is not in joins to the from clause. We may also want to
 		# look at the where clause.
 		prepare = function() {
-			table.names <- getTableNames()
+			table.names <- get_table_names()
 			if (!is.null(.parent$.children$joins))
-				table.names <- c(table.names, .parent$.children$joins$getTableNames())
+				table.names <- c(table.names, .parent$.children$joins$get_table_names())
 
 			clause.tables <- .parent$.children$select$tables
 			
@@ -131,14 +134,14 @@ FromClause <- setRefClass('FromClause',
 				clause.tables <- c(clause.tables, .parent$.children$where$tables)
 			
 			for (clause.table in clause.tables) {
-				if (!clause.table$getName() %in% table.names) {
-					if (!hasTable(clause.table)) {
-						addChild(clause.table)
+				if (!clause.table$get_name() %in% table.names) {
+					if (!has_table(clause.table)) {
+						add_child(clause.table)
 					}
 				}
 			}
 			
-			return(callSuper())
+			callSuper()
 		}
 	)
 )
@@ -147,12 +150,12 @@ FromClause <- setRefClass('FromClause',
 #' 
 #' TODO: need to think about how to handle self-joins automatically. Lots of things won't work
 #' as-is.
-JoinClause <- setRefClass("JoinClause",
+JoinClause <- setRefClass('JoinClause',
 	contains = c(
-		"Clause"
+		'Clause'
 	),
 	fields = c(
-		"type"
+		'type'
 	),
 	methods = list(
 		initialize = function(...) {
@@ -160,18 +163,16 @@ JoinClause <- setRefClass("JoinClause",
 		},
 		
 		# Also give name of field as string for JOIN USING?
-		addChildren = function(...) {
-			callSuper(...)
+		add_children = function(...) {
 			args <- list(...)
-			
-			if (inherits(args[[1]], "SelectableElement")) {
-				table <- args[[1]]$findChildren("Field", TRUE)[[1]]$table
-				addTable(table)
+			if (inherits(args[[1]], 'SelectableElement')) {
+				table <- args[[1]]$find_children('Field', TRUE)[[1]]$table
+				add_table(table)
 				# TODO: this should probably be added in prepare. At that point, we can tell if this is the
 				# correct table (think JOIN ON CONCAT(other.table, this.table)).
-				insertChild(table$asTable(), 1)
+				add_child(table$as_table(), 0)
 			}
-			.self
+			callSuper(...)
 		},
 			
 			
@@ -180,15 +181,15 @@ JoinClause <- setRefClass("JoinClause",
 		# Shorthand syntax for JOIN ON gives only an expression composed of fields. In this case,
 		# we take the table of the leftmost field.
 		#' TODO: make type a field, rather than an option.
-		addChild = function(child, name) {
+		add_child = function(child, name, after) {
 			# This sets the type based on the last element we see -- which is what we want.
-			if (inherits(child, "IntrospectedTable")) {
-				type <<- "NATURAL JOIN"
-				addTable(child)
-				child <- child$asTable()
-			} else if (inherits(child, "Field")) {
-				type <<- "JOIN USING"
-			} else type <<- "JOIN ON"
+			if (inherits(child, 'IntrospectedTable')) {
+				type <<- 'NATURAL JOIN'
+				add_table(child)
+				child <- child$as_table()
+			} else if (inherits(child, 'Field')) {
+				type <<- 'JOIN USING'
+			} else type <<- 'JOIN ON'
 			callSuper(child)
 		}
 	)
@@ -203,24 +204,24 @@ BindingClause <- setRefClass('BindingClause',
 		initialize = function(...) {
 			callSuper(...)
 		},
-		addChildren = function(...) {
+		add_children = function(...) {
 			args <- list(...)
 			
-			# Join this clause to an existing one. Then we pass a list - which addChildren handle.
+			# Join this clause to an existing one. Then we pass a list - which add_children handle.
 			if (length(.children) != 0) {
-				.children[[length(.children)]] <<- BinaryOperator$new(
-					"AND", .children[[length(.children)]], args[[1]]
-				)$setParent(.self)
+				.children[[length(.children)]] <<- BinaryOperatorElement$new(
+					'AND', .children[[length(.children)]], args[[1]]
+				)$set_parent(.self)
 				
 				if (length(args) > 1) args <- args[2:length(args)]
 				else return(.self)
 			}
 			callSuper(args)
 		},
-		addChild = function(child, name) {
-			fields <- child$findChildren("Field")
-			lapply(fields, function(f) addTable(f$table))
-			callSuper(child, name)
+		add_child = function(child, name, after) {
+			fields <- child$find_children('Field')
+			lapply(fields, function(f) add_table(f$table))
+			callSuper(child)
 		}
 	)
 )
@@ -250,12 +251,12 @@ UpdateClause <- setRefClass('UpdateClause',
 		#' 
 		#' Need to think a bit on whether we ever really need to keep tables. One situation
 		#' where that might be simplest is if a clause has extensive nesting - then a naive
-		#' \code{\link{findChildren}} would incorrectly return those.
-		addChild = function(child, name) {
-			if (inherits(child, "IntrospectedTable")) {
-				insertChild(child$asTable(), 1)
-				addTables(child)
-			} else callSuper(child, name)
+		#' \code{\link{find_children}} would incorrectly return those.
+		add_child = function(child, name, after) {
+			if (inherits(child, 'IntrospectedTable')) {
+				callSuper(child$as_table(), after = 0)
+				add_table(child)
+			} else callSuper(child)
 		}
 	)
 )

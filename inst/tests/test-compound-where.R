@@ -19,6 +19,6 @@ WHERE
 )
 
 for (i in seq_along(expressions)) {
-	statement <- session$query(db1$i1)$where(expressions[[i]])$SQL()
+	statement <- session$select(db1$i1)$where(expressions[[i]])$SQL()
 	expect_equal(statement, do.call(sprintf, c(statement.base, compiled[[i]])))
 }

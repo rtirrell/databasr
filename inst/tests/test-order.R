@@ -1,8 +1,8 @@
 context("Testing compilation of ORDER BY")
 
 statements <- list(
-	session$query(db1$i1)$order(-db1$i1)$SQL(),
-	session$query(db1$i1)$order(-db1$i1, +db1$v1)$SQL()
+	session$select(db1$i1)$order(-db1$i1)$SQL(),
+	session$select(db1$i1)$order(-db1$i1, +db1$v1)$SQL()
 )
 
 compiled <- list(

@@ -21,13 +21,13 @@ Statement <- setRefClass('Statement',
 		# I think that ORDER could also be moved to the superclass?
 		limit = function(n) {
 			if (is.null(.children$limit)) .children$limit <<- LimitClause$new(.self)
-			.children$limit$setChildren(n)
+			.children$limit$set_children(n)
 			.self
 		},
 		
 		offset = function(n) {
 			if (is.null(.children$offset)) .children$offset <<- OffsetClause$new(.self)
-			.children$offset$setChildren(n)
+			.children$offset$set_children(n)
 			.self
 		},
 		
@@ -60,16 +60,16 @@ UpdateStatement <- setRefClass('UpdateStatement',
 			return(.self)
 		},
 		update = function(table) {
-			.children$update$insertChild(table, 1)
+			.children$update$add_child(table)
 		},
 		
 		set = function(...) {
-			.children$update$addChildren(...)
+			.children$update$add_children(...)
 			return(.self)
 		},
 		
 		where = function(...) {
-			.children$where$addChildren(...)
+			.children$where$add_children(...)
 			return(.self)
 		}
 	)
@@ -98,44 +98,49 @@ SelectStatement <- setRefClass('SelectStatement',
 		},
 		
 		select = function(...) {
-			.children$select$addChildren(...)
+			.children$select$add_children(...)
 			.self
 		},
 		
 		from = function(...) {
-			.children$from$addChildren(...)
+			.children$from$add_children(...)
 			.self
 		},
 		
 		join = function(...) {
 			if (is.null(.children$joins)) .children$joins <<- ClauseList$new(.self)
 			join.clause <- JoinClause$new(.children$joins)
-			.children$joins$addChild(join.clause$addChildren(...))
+			.children$joins$add_child(join.clause$add_children(...))
 			.self
 		},
 		
 		#' TODO: the logic for the next four below is the same in every case. 
 		where = function(...) {
 			if (!'where' %in% names(.children)) .children$where <<- WhereClause$new(.self)
-			.children$where$addChildren(...)
+			.children$where$add_children(...)
 			.self
 		},
 		
 		group = function(...) {
 			if (is.null(.children$group)) .children$group <<- GroupClause$new(.self)
-			.children$group$addChildren(...)
+			.children$group$add_children(...)
 			.self
 		},
 		
 		having = function(...) {
 			if (is.null(.children$having)) .children$having <<- HavingClause$new(.self)
-			.children$having$addChildren(...)
+			.children$having$add_children(...)
 			.self
 		},
 		
 		order = function(...) {
 			if (is.null(.children$order)) .children$order <<- OrderClause$new(.self)
-			.children$order$addChildren(...)
+			.children$order$add_children(...)
+			.self
+		},
+		
+		distinct = function() {
+			.children$select$set_options(DISTINCT = TRUE)
 			.self
 		},
 		
@@ -189,14 +194,14 @@ SelectStatement <- setRefClass('SelectStatement',
 #' Generate a new `SELECT`, unbound to any session.
 #' 
 #' For example, to 
-query <- function(...) {
+select <- function(...) {
 	SelectStatement$new()$select(...)
 }
 
 
-OperFunStatement <- setRefClass("OperFunStatement",
+OperFunStatement <- setRefClass('OperFunStatement',
 	contains = c(
-		"Statement"
+		'Statement'
 	),
 	methods = list(
 		initialize = function() {
@@ -205,18 +210,18 @@ OperFunStatement <- setRefClass("OperFunStatement",
 	)
 )
 
-OperatorStatement <- setRefClass("OperatorStatement",
+OperatorStatement <- setRefClass('OperatorStatement',
 	contains = c(
-		"OperFunStatement"
+		'OperFunStatement'
 	),
 	fields = c(
-		"operator"
+		'operator'
 	),
 	methods = list(
 		initialize = function(operator = NULL, left = NULL, right = NULL) {
 			initFields(operator = operator)
 			callSuper()
-			addChildren(left, right)
+			add_children(left, right)
 		}
 	)
 )

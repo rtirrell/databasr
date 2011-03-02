@@ -1,6 +1,6 @@
-IntrospectedTable <- setRefClass("IntrospectedTable",
+IntrospectedTable <- setRefClass('IntrospectedTable',
 	contains = c(
-		"Element"
+		'Element'
 	),
 	fields = c(
 		# Session that introspected this table.
@@ -19,42 +19,52 @@ IntrospectedTable <- setRefClass("IntrospectedTable",
 		#' Though \code{NULL} is more logical, we have to use an empty string for \code{.name} to 
 		#' prevent \code{\link{envRefClass}} from dying when the package is loaded (as it seems to 
 		#' instantiate all classes).
-		initialize = function(.session = NULL, .name = "", .database = NULL, .key = NULL) {
+		initialize = function(.session = NULL, .name = '', .database = NULL, .key = NULL) {
 			initFields(
 				.session = .session, .name = .name, .database = .database, .key = .key
 			)
 			callSuper()
-			# TODO: I think that all DBMS use "." as an identifier separator, but need to check.
-			if (is.null(.database) && str_detect(.name, fixed("."))) {
-				split.name <- unlist(str_split(.name, fixed(".")))
+			# TODO: I think that all DBMS use '.' as an identifier separator, but need to check.
+			if (is.null(.database) && str_detect(.name, fixed('.'))) {
+				split.name <- unlist(str_split(.name, fixed('.')))
 				.database <<- split.name[1]
 				.name <<- split.name[2]
 			}
 			.self
 		},
 		
-		getName = function() {
-			if (is.null(.database)) return(.name)
-			str_c(.database, .name, sep = ".")
+		get_name = function() {
+			if (is.null(.database)) .name
+			else str_c(.database, .name, sep = '.')
 		},
 		
+		# This should be renamed.
 		equals = function(other) {
-			if (getName() != other$getName()) return(FALSE)
-			if (!haveSameElements(.key, other$.key)) return(FALSE)
+			if (get_name() != other$get_name()) return(FALSE)
+			if (!have_same_elements(.key, other$.key)) return(FALSE)
 			
-			field.names <- unlist(sapply(.fields, function(f) f$name))
-			other.field.names <- unlist(sapply(other$.fields, function(f) f$name))
-			if (!haveSameElements(field.names, other.field.names)) return(FALSE)
-			
-			TRUE
+			field.names <- vapply(.fields, function(f) f$name, character(1))
+			other.field.names <- vapply(other$.fields, function(f) f$name, character(1))
+			if (have_same_elements(field.names, other.field.names)) TRUE
+			else FALSE
 		},
 		
-		asTable = function() {
+		as_table = function() {
 			Table$new(.self)
 		},
 		
+		# I'd like to remove this method.
 		as = function(name) {
-			Table$new(.self)$as(name)
+			as_table()$as(name)
+		},
+		
+		
+		getFields = function() {
+			.fields
+		},
+		
+		getField = function(name) {
+			.fields[[name]]
 		}
 	)
 )
@@ -62,79 +72,46 @@ IntrospectedTable <- setRefClass("IntrospectedTable",
 #' Represents a table in a query.
 #' 
 #' I think it's okay that alias is redefined here, as we also add additional behavior.
-Table <- setRefClass("Table",
+Table <- setRefClass('Table',
 	contains = c(
-		"IntrospectedTable"
+		'IntrospectedTable'
 	),
 	fields = c(
-		".alias"
+		'.alias'
 	),
 	methods = list(
 		initialize = function(table) {
 			import(table)
 			initFields(.alias = NULL)
-			.fields <<- sapply(.fields, function(f) f$asField()$setTable(.self))
+			.fields <<- sapply(.fields, function(f) f$as_field()$set_table(.self))
 			.self
 		},
 		
 		#' Alias this table.
-		#' 
-		#' Future thoughts: allow no name to be specified, in which case sequential names (tt1, tt2,
-		#' ...) will be used.
 		as = function(name) {
 			.alias <<- name
 			.self
 		},
-		getCompileName = function(name) {
-			if (is.null(.alias)) getName()
+		get_compile_name = function(name) {
+			if (is.null(.alias)) get_name()
 			else .alias
 		},
 		# TODO: evaluate necessity.
-		asTable = function() {
+		as_table = function() {
 			.self
 		}
 	)
 )
 
-#' Test equality of two tables.
-#' 
-#' TODO: move to value-based testing, as above.
-#' @param table the \code{\link{Table}} object to test.
-#' @param other the object to test against.
-#' @return \code{TRUE} if \code{other} is a \code{\link{Table}} object and shares the same name.
-#' 	 \code{FALSE} if the names differ, and \code{NA} if \code{other} is not a \code{\link{Table}}
-#'   object.
-`==.IntrospectedTable` <- function(table, other) {
-	if (!inherits(other, 'IntrospectedTable')) return(NA)
-	return(table$getName() == other$getName())
-}
-
-
-`!=.Table` <- function(table, other) {
-	return(!`==.Table`(table, other))
-}
+.RESERVED.NAMES <- union(Table$methods(), names(Table$fields()))
 
 #' When extracting an \code{\link{IntrospectedField}} object from this table, return the
 #' corresponding \code{\link{Field}} object.
-setMethod("$", "IntrospectedTable", function(x, name) {
-	if (name %in% names(x[[".fields"]])) x[[".fields"]][[name]]$asField()
-	else findMethods("$")$envRefClass(x, as.character(name))
+setMethod('$', 'IntrospectedTable', function(x, name) {
+	# TODO: we get different results from .field and from direct access.
+	if (name %in% names(x[['.fields']])) x[['.fields']][[name]]$as_field()
+	else findMethods('$')$envRefClass(x, as.character(name))
 })
-
-#' Not sure that we ought to support this. This sort of access is, I think, best reserved and thus
-#' we ourselves can handle calling \code{\link{asField()}} as necessary.
-#setMethod("[[", "Table", function(x, i, j, ..., drop = TRUE) {
-#	if (i %in% names(x$.fields)) x$.fields[[i]]$asField()
-#	else as.environment(x)[[x, i, j, ..., drop = drop]]
-#	if (i %in% names(.Primitive("[[")(x, ".fields"))) .Primitive("[[")(x, ".fields")[[i]]$asField()
-#	else .Primitive("[[")(x, i, j, ..., drop = drop)
-#})
-
-setMethod('&', c('IntrospectedTable', 'IntrospectedTable'), function(e1, e2) {
-	query <- e1$.session$query()$from(e1)$join(e2)
-	return(query)
-})
-
 
 #' Introspect a database table and return an object representing that table.
 #' 
@@ -143,36 +120,47 @@ setMethod('&', c('IntrospectedTable', 'IntrospectedTable'), function(e1, e2) {
 #' @param database the name of the database this table resides in. If \code{NULL}, this will be 
 #'   taken from the database name of the \code{\link{Session}} object.
 #' @return a \code{\link{Table}} object representing this database table.
-#' TODO: check assignment to reserved names.
-introspectTable <- function(session, table, database = NULL) {
+introspect_table <- function(session, table, database = NULL) {
 	connection <- session$request()
-	description <- dbGetQuery(connection$connection, sprintf("DESCRIBE %s;", table))
+	description <- dbGetQuery(connection$connection, sprintf('DESCRIBE %s;', table))
 	introspected <- IntrospectedTable$new(
 		.session = session, .database = database, .name = table, 
-		.key = which(description$Key == "PRI")
+		.key = which(description$Key == 'PRI')
 	)
 	
 	fields <- list()
 	
 	for (i in seq_len(nrow(description))) {
+		name <- description$Field[i]
 		field.object <- IntrospectedField$new(
-			name = description$Field[i], table = introspected, 
-			type = createType(description$Type[i])
+			name = name, table = introspected, type = create_type(description$Type[i])
 		)
-		# This works, but assignment has the advantage of tab-completing field names while running
-		# interactively.
-		fields[[description$Field[i]]] <- field.object
+		
+		if (name %in% .RESERVED.NAMES) {
+			warning(sprintf(
+				str_c(
+					'Name `%s` is reserved, replacing with `%s_`. Access in R requires use of `%s_`. ',
+					'The field will still be named by `%s` in results.'
+				)
+			))
+			name <- str_c(name, '_')
+		}
+		
+		# Support tab-completion of field names.
+		introspected[[name]] <- NULL
+		fields[[name]] <- field.object
 	}
 	introspected$.fields <- fields
 	
 	if (!str_detect(table, fixed('.'))) introspected$.database <- session$database
 	session$release(connection)
-	return(introspected)
+	introspected
 }
 
-# Either a single list
 with.IntrospectedTable <- function(data, ...) {
 	expr <- substitute(list(...))
-	if (is(data, "IntrospectedTable")) data <- data$asTable()
-	eval(expr, data$.fields, parent.frame())
+	if (is(data, 'IntrospectedTable')) data <- data$as_table()
+	
+	result <- eval(expr, data$.fields, parent.frame())
+	if (length(result) == 1) result[[1]] else result
 }

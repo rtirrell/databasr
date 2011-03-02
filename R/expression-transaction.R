@@ -9,7 +9,7 @@ Transaction <- setRefClass("Transaction",
 			callSuper()
 		},
 		add = function(element) {
-			addChild(element)
+			add_child(element)
 		}
 	)
 )

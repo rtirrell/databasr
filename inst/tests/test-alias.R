@@ -19,6 +19,6 @@ FROM
 )
 
 for (i in seq_along(expressions)) {
-	statement <- do.call(session$query, expressions[[i]])$SQL()
+	statement <- do.call(session$select, expressions[[i]])$SQL()
 	expect_equal(statement, do.call(sprintf, c(statement.base, compiled[[i]])))
 }

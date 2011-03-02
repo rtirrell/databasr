@@ -62,19 +62,20 @@ TextType <- setRefClass('TextType',
 	)
 )
 
-createType <- function(type.string) {
-	checkSigned <- function(type) {
-		if (str_detect(type.string, fixed("unsigned"))) type$signed <- FALSE
+
+create_type <- function(type.string) {
+	set_signed <- function(type) {
+		if (str_detect(type.string, fixed('unsigned'))) type$signed <- FALSE
 		else type$signed <- TRUE
 		type
 	}
-		
+	
 	type.string <- tolower(type.string)
 	type <- Type$new()
 	
 	if (str_detect(type.string, fixed("int"))) {
 		type.info <- str_match_all(type.string, "\\w*int\\((\\d+)\\).*")
-		type <- checkSigned(IntegerType$new(bytes = as.integer(type.info[[1]][2])))
+		type <- set_signed(IntegerType$new(bytes = as.integer(type.info[[1]][2])))
 	} 
 	
 	if (str_detect(type.string, fixed("char"))) {
@@ -84,13 +85,13 @@ createType <- function(type.string) {
 	
 	if (str_detect(type.string, fixed("decimal"))) {
 		type.info <- str_match_all(type.string, "decimal\\((\\d+),(\\d+)\\).*")
-		type <- checkSigned(DecimalType$new(
+		type <- set_signed(DecimalType$new(
 			bytes = as.integer(type.info[[1]][2]), decimal.bytes = as.integer(type.info[[1]][3])
 		))
 	}  
 	
 	if (str_detect(type.string, "float|double")) {
-		type <- checkSigned(FloatType$new())
+		type <- set_signed(FloatType$new())
 	}
 	
 	if (str_detect(type.string, fixed('text')))

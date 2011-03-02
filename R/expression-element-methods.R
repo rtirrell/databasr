@@ -24,7 +24,7 @@ setMethod("min", "SelectableElement", function(x) {
 	})
 
 setMethod("unique", "SelectableElement", function(x) {
-		FunctionElement$new("DISTINCT", x)
+		PrefixOperatorElement$new("DISTINCT", x)
 	})
 
 #' A \code{\link{length}} method to support generation of 'COUNT' functions.
@@ -64,6 +64,11 @@ setMethod("concat", "SelectableElement", function(selectable, ..., sep = "") {
 	else FunctionElement$new("CONCAT", selectable, ...)
 })
 
+setGeneric('instr', function(selectable, ...) standardGeneric('instr'))
+setMethod('instr', 'SelectableElement', function(selectable, ...) {
+	FunctionElement$new('INSTR', selectable, ...)
+})
+
 ##
 # Operators.
 ##
@@ -85,9 +90,15 @@ setMethod("-", c("SelectableElement", "ANY"), function(e1, e2) {
 setMethod("<", c("SelectableElement", "ANY"), function(e1, e2) {
 		BinaryOperatorElement$new("<", e1, e2)
 	})
+setMethod("<=", c("SelectableElement", "ANY"), function(e1, e2) {
+		BinaryOperatorElement$new("<=", e1, e2)
+	})
 
 setMethod(">", c("SelectableElement", "ANY"), function(e1, e2) {
 		BinaryOperatorElement$new(">", e1, e2)
+	})
+setMethod(">=", c("SelectableElement", "ANY"), function(e1, e2) {
+		BinaryOperatorElement$new("<=", e1, e2)
 	})
 
 setMethod("==", c("SelectableElement", "ANY"), function(e1, e2) {

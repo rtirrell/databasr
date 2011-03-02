@@ -17,12 +17,12 @@ compiled <- list(
 )
 
 for (i in seq_along(expressions)) {
-	statement <- session$query(expressions[[i]])$SQL()
+	statement <- session$select(expressions[[i]])$SQL()
 	expect_equal(statement, do.call(sprintf, c(statement.base, compiled[[i]])))
 }
 
-#statement <- session$query(db1$i1)$SQL()
+#statement <- session$select(db1$i1)$SQL()
 #expect_equal(statement, sprintf(statement.base, "i1", "i1"))
 #
-#statement <- session$query(test$v1)$SQL()
+#statement <- session$select(test$v1)$SQL()
 #expect_equal(statement, sprintf(statement.base, "v1", "v1"))

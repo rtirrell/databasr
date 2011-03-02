@@ -9,11 +9,11 @@ OFFSET %d;"
 )
 
 
-statement <- session$query(db3)[1:1]$SQL()
+statement <- session$select(db3)[1:1]$SQL()
 expect_equal(statement, sprintf(statement.base, 1, 0))
 
-statement <- session$query(db3)[1:10]$SQL()
+statement <- session$select(db3)[1:10]$SQL()
 expect_equal(statement, sprintf(statement.base, 10, 0))
 
-statement <- session$query(db3)[1:10000]$SQL()
+statement <- session$select(db3)[1:10000]$SQL()
 expect_equal(statement, sprintf(statement.base, 10000, 0))

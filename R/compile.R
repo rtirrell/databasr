@@ -1,29 +1,11 @@
-compileVector <- function(value, quote = FALSE) {
-	if (quote) value <- sprintf("'%s'", value)
-	
-	return(sprintf('(%s)', str_c(value, collapse = ', ')))
-}
-
-.OPERATOR.NAMES <- list(
-	"=" = "eq",
-	"!=" = "neq",
-	">" = "gt",
-	">="  = "ge",
-	"<" = "lt",
-	"<=" = "le",
-	"IN" = "in",
-	"NOT IN" = "nin"
-)
-	
-
 #' Class implementing DBMS-specific compilation behavior (syntax and formatting).
 #' If a need arises to add behavior between preparation and this step, we'll add a
 #' database-specific preparation step that follows the database-agnostic step, making the workflow
 #' composition, agnostic preparation, specific preparation, compilation/formatting.
-Compiler <- setRefClass("Compiler",
+Compiler <- setRefClass('Compiler',
 	fields = c(
-		"statement",
-		"formatter",
+		'statement',
+		'formatter',
 		# I believe this is shared by all DBMSes that we will target.
 		'identifier.collapse',
 		'identifier.quote',
@@ -41,7 +23,7 @@ Compiler <- setRefClass("Compiler",
 		},
 		
 		prepare = function() {
-			identifier.base <<- str_c(identifier.quote, "%s", identifier.quote)
+			identifier.base <<- str_c(identifier.quote, '%s', identifier.quote)
 			.self
 		},
 		
@@ -52,15 +34,15 @@ Compiler <- setRefClass("Compiler",
 		
 		#' Dispatch a compilation function based on class.
 		dispatch = function(value) {
-			method.name <- str_c("compile", capitalize(class(value)))
-			#print(str_c("Compile function name: ", method.name))
+			method.name <- str_c('compile', capitalize(class(value)))
+			
 			# Here we can't just get the function, as it (may) need to be inferred.
-			method <- findMethods("$")$envRefClass(.self, as.character(method.name))
+			method <- findMethods('$')$envRefClass(.self, as.character(method.name))
 			method(value)
 		},
 		
 		#' Dispatch a compilation function to children of the given value.
-		dispatchChildren = function(value, include = NULL, exclude = NULL) {
+		dispatch_children = function(value, include = NULL, exclude = NULL) {
 			if (is.null(include)) {
 				indices <- seq_along(value$.children)
 				if (!is.null(exclude)) indices <- indices[-exclude]
@@ -77,45 +59,65 @@ Compiler <- setRefClass("Compiler",
 			)
 		},
 		
+		compileAsIs = function(value) {
+			value
+		},
+		
 		#' Compile an alias for an expression.
 		compileAlias = function(value) {
 			if (is.null(value$alias)) {
 				if (inherits(value, 'OperatorElement')) operfun <- .OPERATOR.NAMES[[value$operator]] 
 				else operfun <- value$func 
 				
-				fields <- value$findChildren("Field")
+				fields <- value$find_children('Field')
 				# A field name composed this way could be duplicated. We could track field names on the 
 				# parent SELECT and perform checks. But we'd like *all* aliases to be treated the same way,
-				# not just all following the first (e.g., if we were to add "_n").
+				# not just all following the first (e.g., if we were to add '_n').
 				if (length(fields) == 1) 
-					compileIdentifier(str_c(tolower(operfun), "_", fields[[1]]$name))
+					compileIdentifier(str_c(tolower(operfun), '_', fields[[1]]$name))
 				else 
-					compileIdentifier(str_c(tolower(operfun), "_", formatter$getCounter(operfun)))
+					compileIdentifier(str_c(tolower(operfun), '_', formatter$get_counter(operfun)))
 			} else compileIdentifier(value$alias)
 		},
 		
 		##
 		# R literals.
 		##
+		compileVector = function(value, quote = FALSE) {
+			if (quote) 
+				value <- sprintf("'%s'", value)
+			
+			return(sprintf('(%s)', str_c(value, collapse = ', ')))
+		},
+		
 		compileInteger = function(value) {
-			if (length(value) > 1) compileVector(value)
-			else value
+			if (length(value) > 1) 
+				compileVector(value)
+			else 
+				value
 		},
 		
 		compileNumeric = function(value) {
-			if (length(value) > 1) compileVector(value)
-			else value
+			if (length(value) > 1) 
+				compileVector(value)
+			else 
+				value
 		},
 		
 		compileCharacter = function(value) {
-			if (length(value) > 1) compileVector(value, TRUE)
-			else sprintf("'%s'", value)
+			if (length(value) > 1) 
+				compileVector(value, TRUE)
+			else 
+				sprintf("'%s'", value)
 		},
 		
 		compileLogical = function(value) {
-			if (is.na(value)) "NULL"
-			else if (value) "TRUE"
-			else "FALSE"
+			if (is.na(value)) 
+				'NULL'
+			else if (value) 
+				'TRUE'
+			else 
+				'FALSE'
 		},
 		
 		##
@@ -124,30 +126,36 @@ Compiler <- setRefClass("Compiler",
 
 		#' TODO here: possible aliasing?
 		compileTable = function(value) {
-			name <- compileIdentifier(value$getName())
-			if (!is.null(value$.alias)) str_c(name, "AS", compileIdentifier(value$.alias), sep = " ")
-			else name
+			name <- compileIdentifier(value$get_name())
+			if (!is.null(value$.alias)) 
+				str_c(name, 'AS', compileIdentifier(value$.alias), sep = ' ')
+			else 
+				name
 		},
 		
 		compileField = function(value) {
 			# If the value's parent is a JOIN clause, it must be JOIN ... USING ..., in which case we
 			# want only the name of the field.
-			if (inherits(value$.parent, "JoinClause")) name <- compileIdentifier(value$name)
+			if (inherits(value$.parent, 'JoinClause')) 
+				name <- compileIdentifier(value$name)
 			else {
-				if (inherits(value$table, "Table"))
-					name <- compileIdentifier(value$table$getCompileName(), value$name)
+				if (inherits(value$table, 'Table'))
+					name <- compileIdentifier(value$table$get_compile_name(), value$name)
 				else
-					name <- compileIdentifier(value$table$getName(), value$name)
+					name <- compileIdentifier(value$table$get_name(), value$name)
 			}
 					
-			if (inherits(value$.parent, "SelectClause")) {
+			if (inherits(value$.parent, 'SelectClause')) {
 				if (is.null(value$alias)) {
-					if (!is.null(value$.parent$getOption("short.alias"))) 
+					if (value$name %in% value$.parent$get_option('full.alias'))
+						alias <- compileIdentifier(str_c(value$table$.name, '_', value$name))
+					else 
 						alias <- compileIdentifier(value$name)
-					else alias <- compileIdentifier(str_c(value$table$.name, "_", value$name))
-				} else alias <- value$alias
-				str_c(name, "AS", alias, sep = " ")
-			} else name
+				} else 
+					alias <- value$alias
+				str_c(name, 'AS', alias, sep = ' ')
+			} else 
+				name
 		},
 		
 		##
@@ -155,35 +163,46 @@ Compiler <- setRefClass("Compiler",
 		##
 
 		compileTupleElement = function(value) {
-			str_c("(", str_c(dispatchChildren(value), collapse = ", "), ")")
+			str_c('(', str_c(dispatch_children(value), collapse = ', '), ')')
 		},
 		
 		compileList = function(value) {
-			str_c("(", str_c(unlist(sapply(value, dispatch)), collapse = ", "), ")")
+			str_c('(', str_c(unlist(sapply(value, dispatch)), collapse = ', '), ')')
 		},
 		
 		compileFunctionElement = function(value) {
-			func <- str_c(value$func, "(")
-			func <- str_c(func, str_c(dispatchChildren(value), collapse = ", "), ")")
+			func <- str_c(value$func, '(')
+			func <- str_c(func, str_c(dispatch_children(value), collapse = ', '), ')')
 			
 			# If this is the top-level application of a function in SELECT, alias it. 
 			# Will follow a similar logic in compiling operators.
-			if (inherits(value$.parent, "SelectClause"))
-				str_c(func, "AS", compileAlias(value), sep = " ")
-			else func
+			if (inherits(value$.parent, 'SelectClause'))
+				str_c(func, 'AS', compileAlias(value), sep = ' ')
+			else 
+				func
+		},
+		
+		
+		compilePrefixOperatorElement = function(value) {
+			compiled <- str_c(value$operator, str_c(dispatch_children(value), collapse = ', '), sep = ' ')
+			if (inherits(value$.parent, 'SelectClause'))
+				str_c(compiled, 'AS', compileAlias(value), sep = ' ')
+			else
+				compiled
 		},
 		
 		compilePostfixOperatorElement = function(value) {
-			str_c(dispatchChildren(value), value$operator, sep = " ")
+			str_c(dispatch_children(value), value$operator, sep = ' ')
 		},
 		
 		compileBinaryOperatorElement = function(value) {
 			compiled <- str_c(
-				dispatch(value$.children[[1]]), value$operator, dispatch(value$.children[[2]]), sep = " "
+				dispatch(value$.children[[1]]), value$operator, dispatch(value$.children[[2]]), sep = ' '
 			)
-			if (inherits(value$.parent, "SelectClause")) 
-				str_c(compiled, "AS", compileAlias(value), sep = " ")
-			else compiled
+			if (inherits(value$.parent, 'SelectClause')) 
+				str_c(compiled, 'AS', compileAlias(value), sep = ' ')
+			else 
+				compiled
 		},
 		
 		compileNegatableBinaryOperatorElement = function(value) {
@@ -192,25 +211,20 @@ Compiler <- setRefClass("Compiler",
 		
 		##
 		# Clauses.
-		# 
-		# This formatting approach should continue to work with nesting - as ".lines"
-		# on the formatter is stacklike and modifications will never be interleaved. 
-		# That said, it's not yet covered by tests.
 		##
-
 		compileSelectClause = function(value) {
 		},
 		
 		compileUpdateClause = function(value) {
-			formatter$begin("UPDATE")$down()$line(dispatchChildren(value, include = 1))
-			formatter$up()$line("SET")$down()$line(
-				str_c(dispatchChildren(value, exclude = 1), collapse = ", ")
+			formatter$begin('UPDATE')$down()$line(dispatch_children(value, include = 1))
+			formatter$up()$line('SET')$down()$line(
+				str_c(dispatch_children(value, exclude = 1), collapse = ', ')
 			)$up()$end()
 		},
 		
 		# These clauses should be lines, but check first.
 		compileFromClause = function(value) {
-			formatter$begin("FROM")$down()$line(str_c(dispatchChildren(value), collapse = ", "))
+			formatter$begin('FROM')$down()$line(str_c(dispatch_children(value), collapse = ', '))
 			formatter$up()$end()
 		},
 		
@@ -218,57 +232,57 @@ Compiler <- setRefClass("Compiler",
 		#' 
 		#' Note that in the current expression generation scheme several clause types only ever 
 		#' have a single child as their binding clause -- the first (WHERE, HAVING) or second 
-		#' (JOIN ON) one. For the sake of right now, we nonetheless collapse by " ".
+		#' (JOIN ON) one. For the sake of right now, we nonetheless collapse by ' '.
 		compileWhereClause = function(value) {
-			formatter$begin("WHERE")$down()$line(str_c(dispatchChildren(value), collapse = " "))
+			formatter$begin('WHERE')$down()$line(str_c(dispatch_children(value), collapse = ' '))
 			formatter$up()$end()
 		},
 		
 		compileJoinClause = function(value) {
-			if (value$type == "NATURAL JOIN") {
-				formatter$begin("NATURAL JOIN")$down()$line(dispatchChildren(value, include = 1))
+			if (value$type == 'NATURAL JOIN') {
+				formatter$begin('NATURAL JOIN')$down()$line(dispatch_children(value, include = 1))
 				return(formatter$up()$end())
 			}
-			if (value$type == "JOIN ON") {
-				formatter$begin("JOIN")$down()$line(dispatchChildren(value, include = 1))$up()
-				formatter$line("ON")$down()$lines(dispatchChildren(value, exclude = 1))$up()
+			if (value$type == 'JOIN ON') {
+				formatter$begin('JOIN')$down()$line(dispatch_children(value, include = 1))$up()
+				formatter$line('ON')$down()$lines(dispatch_children(value, exclude = 1))$up()
 				return(formatter$end())
 			}
-			if (value$type == "JOIN USING") {
-				formatter$begin("JOIN")$down()$line(dispatchChildren(value, include = 1))$up()
-				formatter$line("USING (")$down()
-				return(formatter$lines(dispatchChildren(value, exclude = 1))$up()$line(")")$end())
+			if (value$type == 'JOIN USING') {
+				formatter$begin('JOIN')$down()$line(dispatch_children(value, include = 1))$up()
+				formatter$line('USING (')$down()
+				return(formatter$lines(dispatch_children(value, exclude = 1))$up()$line(')')$end())
 			}
 		},
 		
 		compileGroupClause = function(value) {
-			formatter$begin("GROUP BY")$down()$line(str_c(dispatchChildren(value), collapse = ", "))
+			formatter$begin('GROUP BY')$down()$line(str_c(dispatch_children(value), collapse = ', '))
 			formatter$up()$end()
 		},
 		
 		compileHavingClause = function(value) {
-			formatter$begin("HAVING")$down()$line(str_c(dispatchChildren(value), collapse = " "))
+			formatter$begin('HAVING')$down()$line(str_c(dispatch_children(value), collapse = ' '))
 			formatter$up()$end()
 		},
 		
 		compileOrderClause = function(value) {
-			formatter$begin("ORDER BY")$down()$line(str_c(dispatchChildren(value), collapse = ", "))
+			formatter$begin('ORDER BY')$down()$line(str_c(dispatch_children(value), collapse = ', '))
 			formatter$up()$end()
 		},
 		
 		compileLimitClause = function(value) {
-			formatter$begin("LIMIT")$toLine(dispatchChildren(value))$end()
+			formatter$begin('LIMIT')$to_line(dispatch_children(value))$end()
 		},
 		
 		compileOffsetClause = function(value) {
-			formatter$begin("OFFSET")$toLine(dispatchChildren(value))$end()
+			formatter$begin('OFFSET')$to_line(dispatch_children(value))$end()
 		},
 		
 		##
 		# Clause lists.
 		## 
 		compileClauseList = function(value) {
-			dispatchChildren(value)
+			dispatch_children(value)
 		},
 		
 		##
@@ -280,15 +294,15 @@ Compiler <- setRefClass("Compiler",
 			formatter$begin()
 			# We only want to parenthetize a statement if its included in a clause or other
 			# element.
-			if (!is.null(value$.parent) && !inherits(value$.parent, "Statement")) 
-				formatter$line("(")$down()
+			if (!is.null(value$.parent) && !inherits(value$.parent, 'Statement')) 
+				formatter$line('(')$down()
 			
-			formatter$lines(dispatchChildren(value))
+			formatter$lines(dispatch_children(value))
 			
-			if (!is.null(value$.parent) && !inherits(value$.parent, "Statement")) 
-				formatter$up()$line(")")
+			if (!is.null(value$.parent) && !inherits(value$.parent, 'Statement')) 
+				formatter$up()$line(')')
 			
-			str_c(unlist(formatter$end()), collapse = "\n")
+			str_c(unlist(formatter$end()), collapse = '\n')
 		},
 		compileSelectStatement = function(value) {
 			compileStatement(value)
@@ -298,25 +312,25 @@ Compiler <- setRefClass("Compiler",
 		},
 		compileStatementOperator = function(value) {
 			formatter$begin()
-			formatter$lines(dispatchChildren(value, include = 1))
+			formatter$lines(dispatch_children(value, include = 1))
 			formatter$line(value$operator)
-			formatter$lines(dispatchChildren(value, include = 2))
+			formatter$lines(dispatch_children(value, include = 2))
 			formatter$end()
 		}
 		
 	)
 )
 
-MySQLCompiler <- setRefClass("MySQLCompiler",
+MySQLCompiler <- setRefClass('MySQLCompiler',
 	contains = c(
-		"Compiler"
+		'Compiler'
 	),
 	methods = list(
 		initialize = function(...) {
 			callSuper(...)
 			initFields(
-				identifier.collapse = ".",
-				identifier.quote = "`"
+				identifier.collapse = '.',
+				identifier.quote = '`'
 			)
 			prepare()
 		},
@@ -330,13 +344,13 @@ MySQLCompiler <- setRefClass("MySQLCompiler",
 		#' MySQL's behavior needs to diverge from (e.g.) Postgres', as Postgres should never issue
 		#' `COUNT(*)`.
 		compileSelectClause = function(value) {
-			if (!is.null(value$getOption("distinct"))) formatter$begin("SELECT DISTINCT")$down()
-			else formatter$begin("SELECT")$down()
+			if (!is.null(value$get_option('DISTINCT'))) formatter$begin('SELECT DISTINCT')$down()
+			else formatter$begin('SELECT')$down()
 			
-			if (!is.null(value$getOption("count"))) 
-				return(formatter$line("COUNT(*)")$up()$end())
+			if (!is.null(value$get_option('count'))) 
+				return(formatter$line('COUNT(*)')$up()$end())
 			
-			formatter$line(str_c(dispatchChildren(value), collapse = ", "))
+			formatter$line(str_c(dispatch_children(value), collapse = ', '))
 			formatter$up()$end()
 		}
 		
@@ -351,7 +365,7 @@ PostgresCompiler <- setRefClass('PostgresCompiler',
 		initialize = function() {
 			callSuper()
 			initFields(
-				identifier.collapse = ".",
+				identifier.collapse = '.',
 				identifier.quote = '"'
 			)
 			prepare()

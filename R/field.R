@@ -14,12 +14,12 @@ IntrospectedField <- setRefClass('IntrospectedField',
 			callSuper()
 		},
 		
-		setTable = function(new.table) {
+		set_table = function(new.table) {
 			table <<- new.table
 			.self
 		},
 		
-		asField = function() {
+		as_field = function() {
 			Field$new(.self)
 		}
 	)
