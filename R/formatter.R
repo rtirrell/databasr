@@ -2,7 +2,8 @@ Formatter <- setRefClass('Formatter',
 	fields = c(
 		# A list of character vectors (i.e., a list where each element is a character vector of one
 		# or more lines).
-		'.lines',
+		'stack',
+		# The current stack level.
 		'level'
 	),
 	contains = c(
@@ -12,15 +13,16 @@ Formatter <- setRefClass('Formatter',
 	methods = list(
 		initialize = function() {
 			callSuper()
-			initFields(.lines = list(), level = 0)
+			initFields(stack = list(), level = 0)
 		},
 		
 		get_padding = function() {
-			return(str_c(str_c(rep("  ", level), collapse = "")))
+			str_c(str_c(rep('  ', level), collapse = ''))
 		},
 		
+		#' Push a value onto the stack.
 		begin = function(value, padding = get_padding()) {
-			.lines[[length(.lines) + 1]] <<- character(0)
+			stack[[length(stack) + 1]] <<- character(0)
 			if (!missing(value)) line(value, padding)
 			.self
 		},
@@ -32,7 +34,7 @@ Formatter <- setRefClass('Formatter',
 		#' @return .self
 		line = function(line, padding = get_padding()) {
 			if (is.list(line)) line <- unlist(line)
-			.lines[[length(.lines)]] <<- c(.lines[[length(.lines)]], str_c(padding, line))
+			stack[[length(stack)]] <<- c(stack[[length(stack)]], str_c(padding, line))
 			.self
 		},
 		
@@ -41,14 +43,14 @@ Formatter <- setRefClass('Formatter',
 			.self
 		},
 		
-		#' Add to the last line.
+		#' Add a value to the last line.
 		#' 
 		#' @param value value to add, a character vector of length one.
-		#' @param sep separator to prepend to the value, defaults to " ".
+		#' @param sep separator to prepend to the value, defaults to ' '.
 		#' @return .self
-		to_line = function(value, sep = " ") {
-			last <- length(.lines[[length(.lines)]])
-			.lines[[length(.lines)]][[last]] <<- str_c(.lines[[length(.lines)]][[last]], value, sep = sep)
+		to_line = function(value, sep = ' ') {
+			last <- length(stack[[length(stack)]])
+			stack[[length(stack)]][[last]] <<- str_c(stack[[length(stack)]][[last]], value, sep = sep)
 			.self
 		},
 		
@@ -62,18 +64,18 @@ Formatter <- setRefClass('Formatter',
 			.self
 		},
 		
-		
+		#' Pop the stack return the popped value.
 		end = function() {
-			return.lines <- .lines[[length(.lines)]]
-			.lines <<- .lines[-length(.lines)]
+			return.lines <- stack[[length(stack)]]
+			stack <<- stack[-length(stack)]
 			return.lines
 		},
 		
-		
+		#' Collapse the given lines by a newline and terminate with a semicolon.
 		finish = function(other.lines) {
 			other.lines <- unlist(other.lines)
-			other.lines[[length(other.lines)]] <- str_c(other.lines[[length(other.lines)]], ";")
-			str_c(other.lines, collapse = "\n")
+			other.lines[[length(other.lines)]] <- str_c(other.lines[[length(other.lines)]], ';')
+			str_c(other.lines, collapse = '\n')
 		}
 	)
 )

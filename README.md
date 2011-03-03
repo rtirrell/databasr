@@ -1,9 +1,9 @@
 # databasr
-databasr is a database abstraction and ORM for R.
+databasr is a database abstraction and pseudo-ORM package for R.
 Features currently supported to some degree on **MySQL** include:
 
 * An expressive syntax using standard R functions wherever possible.
-* Proxying of results and pseudointelligent handling of database sessions.
+* Proxying of results and management of database sessions.
 * Table introspection and, optionally, 'live' updates to tables.
 
 
@@ -19,7 +19,7 @@ closely approximates the semantics of an OO language. databasr builds on these a
 as possible, and as such, we are aiming at what is very probably a moving target.
 
 
-### Design Overview
+### Design overview
 * All objects representing a value that may be present in a query inherit from `SQLObject`, which
   provides basic n-ary tree functionality (having `.parent` and `.children` fields).
  
@@ -40,9 +40,8 @@ as possible, and as such, we are aiming at what is very probably a moving target
 
 * Execution: 
   either by `statement$execute()`, `statement$all()`, `statement$first()`, or `statement$one()`.
-  The latter three of these just call `execute()` and fetch immediately.
-  `one()` also ensures that exactly one result is returned.
-  Execution creates a new `Result` object, which calls `SQL()` on the statement it is passed.
+  The latter three of these just call `execute()` and fetch immediately (no lazy behavior).
+  `one()` also ensures that the result set has exactly one row.
   The return value of `execute()` is either a `data.frame` or `Result` object (see below).
   
   * In `SQL()`, `prepare()` is first called down the tree from the parent statement.
@@ -76,8 +75,10 @@ as possible, and as such, we are aiming at what is very probably a moving target
   
 * Support for raw SQL.
 
+* Continued work on lazy results.
 
-## Needs tests
+
+## Need tests
 * `PrefixOperatorElement`.
 
 * `GROUP BY`.
@@ -85,5 +86,3 @@ as possible, and as such, we are aiming at what is very probably a moving target
 * `HAVING` -- the tests for `WHERE` mostly cover it.
 
 * Compilation of aliased operators.
-
-* On-demand fetching -- and more generally, this needs some more thought.

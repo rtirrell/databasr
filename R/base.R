@@ -18,14 +18,19 @@ DatabasrObject <- setRefClass('DatabasrObject',
 		set_options = function(...) {
 			opts <- list(...)
 			opt.names <- names(opts)
-			for (i in seq_along(opts)) .options[[opt.names[i]]] <<- opts[[i]]
+			
+			for (i in seq_along(opts)) 
+				.options[[opt.names[i]]] <<- opts[[i]]
+			
 			.self
 		},
 		
 		#' Get a counter by name - create with value 1 if it does not exist, increment otherwise.
 		get_counter = function(counter.name) {
-			if (!counter.name %in% names(.options)) .options[[counter.name]] <<- 1
-			else .options[[counter.name]] <<- .options[[counter.name]] + 1
+			if (!counter.name %in% names(.options)) 
+				.options[[counter.name]] <<- 1
+			else 
+				.options[[counter.name]] <<- .options[[counter.name]] + 1
 		}
 		
 	)
@@ -62,12 +67,14 @@ SQLObject <- setRefClass('SQLObject',
 		find_children = function(class, self = FALSE) {
 			class.children <- list()	
 			
-			if (self && inherits(.self, class)) class.children <- c(class.children, .self)
+			if (self && inherits(.self, class)) 
+				class.children <- c(class.children, .self)
 			
 			for (child in .children) {
 				# TODO: should this be an either-or situation? As of now I can't think of a use-case for
 				# needing every child where a given class may contain other objects of that class.
-				if (inherits(child, class)) class.children <- c(class.children, child)
+				if (inherits(child, class)) 
+					class.children <- c(class.children, child)
 				else if (inherits(child, 'SQLObject') && child$has_children()) 
 					class.children <- c(class.children, child$find_children(class))
 			}
@@ -93,11 +100,14 @@ SQLObject <- setRefClass('SQLObject',
 				to.append <- list()
 				to.append[[name]] <- child
 			}
-			if (missing(after)) {
+			
+			if (missing(after))
 				after <- length(.children)
-			}
 			.children <<- append(.children, to.append, after)
-			if (inherits(child, 'SQLObject')) child$set_parent(.self)
+			
+			if (inherits(child, 'SQLObject')) 
+				child$set_parent(.self)
+			
 			.self
 		},
 		
@@ -110,16 +120,21 @@ SQLObject <- setRefClass('SQLObject',
 			# Handle SELECT when using with(Table), which passes a list, 
 			# and WHERE, which passes a list if children are being joined to existing children
 			# by some boolean operator.
-			if (length(args) == 1 && is.list(args[[1]])) args <- unlist(args)
+			if (length(args) == 1 && is.list(args[[1]])) 
+				args <- unlist(args)
 			arg.names <- names(args)
-			for (i in seq_along(args)) add_child(args[[i]], arg.names[[i]])
+			
+			for (i in seq_along(args)) 
+				add_child(args[[i]], arg.names[[i]])
+			
 			.self
 		},
 		
 		#' Prepare all children of this node that inherit from \code{SQLObject}.
 		prepare = function() {
 			for (child in .children) {
-				if (inherits(child, 'SQLObject')) child$prepare()
+				if (inherits(child, 'SQLObject')) 
+					child$prepare()
 			}
 			.self
 		}

@@ -24,64 +24,82 @@ Result <- setRefClass('Result',
 		'SQL',
 		'result.set',
 		'result',
-		# This is more aptly named 'table'.
 		'introspected',
 		'pending'
 	),
 	methods = list(
 		#' Initialize the result for a given session and statement.
-		#' 
-		#' TODO: we can pull fetch.size from driver options.
 		initialize = function(session, statement, fetch.size = NULL, mutable = FALSE) {
 			initFields(
 				session = session, connection = NULL, SQL = statement$SQL(),
 				result.set = NULL, result = NULL, introspected = NULL, pending = list()
 			)
 			callSuper()
-			if (is.null(fetch.size)) fetch.size <- session$get_option('fetch.size')
-			set_options(fetch.size = fetch.size, fetched.row.count = 0, started = FALSE, finished = FALSE)
+			
+			if (is.null(fetch.size)) 
+				fetch.size <- session$get_option('fetch.size')
+			
+			set_options(
+				fetch.size = fetch.size, fetched.row.count = 0, 
+				started = FALSE, finished = FALSE
+			)
 			check_mutable(statement, mutable)
 			
 			.self
 		},
 		
+		#' Send the query.
 		send_query = function() {
-			#debug(logger, SQL)
 			set_options(started = TRUE)
 			connection <<- session$request('result')
 			result.set <<- dbSendQuery(connection$connection, SQL)
 		},
 		
-		# Get all results for this query. If the result is marked mutable, then we return this object.
-		# Otherwise, we return the underlying data frame.
+		#' Fetch all rows for this query. 
+		#' 
+		#' If the result is marked mutable, then returns this object.
+		#' Otherwise, returns the underlying data frame.
 		all = function() {
 			get(-1)
-			if (!get_option('mutable')) get_result()
-			else .self
+			
+			if (!get_option('mutable')) 
+				get_result()
+			else 
+				.self
 		},
 		
+		#' Get the first row in the result set.
 		first = function() {
 			get(1)
 			get_result()[1, ]
 		},
 		
+		#' Get the first row in the result set, checking that that row is the only one.
 		one = function() {
 			get(2)
-			if (get_affected_count() > 1) stop('More than one row in result set.')
+			if (get_affected_count() > 1) 
+				stop('More than one row in result set.')
+			
 			get_result()[1, ]
 		},
 		
+		#' Get the underlying data frame, after finishing this result.
 		get_result = function() {
 			finish()
 			result
 		},
 		
+		#' Return the number of rows affected by this query.
 		get_affected_count = function() {
-			if (get_option('finished')) get_option('affected.row.count')
-			else if (get_option('started')) dbGetRowCount(result.set)
-			else NA
+			if (get_option('finished')) 
+				get_option('affected.row.count')
+			else if (get_option('started')) 
+				dbGetRowCount(result.set)
+			else 
+				NA
 		},
 		
+		#' Return the number of rows fetched so far.
 		get_fetched_count = function() {
 			get_option('fetched.row.count')
 		},
@@ -109,43 +127,43 @@ Result <- setRefClass('Result',
 					new.result <- fetch(result.set, n)
 					result[1:nrow(new.result) + nrow(result), ] <<- new.result
 				}
-			} else result <<- fetch(result.set, n)
+			} else 
+				result <<- fetch(result.set, n)
+			
 			set_options(fetched.row.count = get_option('fetched.row.count') + n)
 			
-			if (dbHasCompleted(result.set) && !get_option('mutable')) finish()
+			if (dbHasCompleted(result.set) && !get_option('mutable')) 
+				finish()
+			
 			.self
 		},
 		
 		is_dirty = function() {
-			return(length(pending) != 0)
+			length(pending) != 0
 		},
 		
+		#' Update information on the result set and return connections.
 		finish = function() {
-			if (get_option('finished')) {
-				#warning('Result has already been finished.')
-			} else {
-				
-				if (is_dirty()) warning('Finishing result with pending mutations.')
-				pending <<- list()
-				
-				set_options(affected.row.count = get_affected_count())
-				
-				if (get_option('started')) {
-					dbClearResult(result.set)
-					session$release(connection)
-				}
-				set_options(finished = TRUE)
+			if (is_dirty()) 
+				warning('Finishing result with pending mutations.')
+			
+			pending <<- list()
+			set_options(affected.row.count = get_affected_count())
+			
+			if (get_option('started')) {
+				dbClearResult(result.set)
+				session$release(connection)
 			}
+			set_options(finished = TRUE)
 		},
 		
 		
-		# I'm not sure when to use dbCommit, and when to send the equivalent query.
+		#' I'm not sure when to use dbCommit, and when to send the equivalent query.
 		flush = function() {
 			flush.connection <- session$request('flush')
 			dbSendQuery(flush.connection$connection, 'START TRANSACTION;')
 			for (mutation in pending) {
 				mutation.SQL <- mutation$SQL()
-				#debug(session, mutation.SQL)
 				dbSendQuery(flush.connection$connection, mutation.SQL)
 			}
 			
@@ -155,7 +173,9 @@ Result <- setRefClass('Result',
 		},
 		
 		
-		# If the user believes the result for this query is mutable, we don't -- check first.
+		#' Check whether a result is mutable. 
+		#' 
+		#' If the user believes the result is mutable, we don't -- check first.
 		check_mutable = function(statement, mutable) {
 			set_options(mutable = mutable)
 			if (mutable) {
@@ -182,39 +202,41 @@ Result <- setRefClass('Result',
 					stop.message <- 'Cannot alter result lacking complete primary key.'
 
 				statement$restore()
-				if (!is.null(stop.message)) stop(stop.message)
+				
+				if (!is.null(stop.message)) 
+					stop(stop.message)
+				
 				set_options(mutable = TRUE)
 			}
 		},
 		
+		#' When this object is being destroyed, make sure we wrap up politely.
 		finalize = function() {
 			finish()
 		}
 	)
 )
 
-
-
+#' Extract values from the underlying data frame.
 `[.Result` <- function(result, i, j, ..., drop = FALSE) {
-	if (i > result$get_option('affected.row.count')) stop(sprintf('Index %d is out of bounds.', i))
+	if (i > result$get_option('affected.row.count')) 
+		stop(sprintf('Index %d is out of bounds.', i))
+	
 	delta <- max(result$get_option('fetch.size'), i - result$get_option('fetched.row.count'))
 	result$get(delta)
+	
 	`[.data.frame`(result$result, i, j, ..., drop)
 }
 
 #' Access a field in the underlying data frame.
-#' 
-#' TODO: as far as I know, there's no way to allow result.object$field[10] <- 4 to be intercepted
-#'   to the tune of ('field', 4). We could also overload `[[<-` to allow simpler (e.g., 
-#'   '[['field']] <- value' column-wise replacement, versus '[, 'field'] <- value'.
 setMethod('$', 'Result', function(x, name) {
-	if (name %in% names(x[['result']])) x[['result']][, name]
-	else findMethods('$')$envRefClass(x, as.character(name))
+	if (name %in% names(x[['result']])) 
+		x[['result']][, name]
+	else 
+		findMethods('$')$envRefClass(x, as.character(name))
 })
 
 #' Replace value(s) in the underlying data frame.
-#' 
-#' TODO: adding rows and using dbWriteTable.
 `[<-.Result` <- function(result, i, j, value) {
 	if (!result$get_option('started')) 
 		stop(str_c(
@@ -222,8 +244,10 @@ setMethod('$', 'Result', function(x, name) {
 			'Either access the result to trigger fetching or get() manually.', sep = ' '
 		))
 		
-	if (missing(i)) i = seq_len(nrow(result$result))
-	if (missing(j)) j = seq_along(result$result)
+	if (missing(i)) 
+		i <- seq_len(nrow(result$result))
+	if (missing(j)) 
+		j <- seq_along(result$result)
 	
 	if (result$get_option('mutable')) {
 		# This should check affected row count.

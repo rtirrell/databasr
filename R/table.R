@@ -53,18 +53,9 @@ IntrospectedTable <- setRefClass('IntrospectedTable',
 			Table$new(.self)
 		},
 		
-		# I'd like to remove this method.
+		#' Alias the `Table` corresponding to this `IntrospectedTable`.
 		as = function(name) {
 			as_table()$as(name)
-		},
-		
-		
-		getFields = function() {
-			.fields
-		},
-		
-		getField = function(name) {
-			.fields[[name]]
 		}
 	)
 )
@@ -92,11 +83,14 @@ Table <- setRefClass('Table',
 			.alias <<- name
 			.self
 		},
+		
+		
 		get_compile_name = function(name) {
 			if (is.null(.alias)) get_name()
 			else .alias
 		},
-		# TODO: evaluate necessity.
+		
+		#' This is a no-op, returning this table.
 		as_table = function() {
 			.self
 		}

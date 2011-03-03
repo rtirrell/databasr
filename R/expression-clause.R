@@ -66,6 +66,7 @@ SelectClause <- setRefClass('SelectClause',
 		#' There are three cases depending on the class of the arguments.
 		add_child = function(child, name, after)  {
 			fields <- list()
+			
 			if (inherits(child, 'IntrospectedTable')) {
 				# Child is a table, add all of it's IntrospectedFields as Fields.
 				for (field in child$.fields) callSuper(field$as_field())
@@ -162,7 +163,9 @@ JoinClause <- setRefClass('JoinClause',
 			callSuper(...)
 		},
 		
-		# Also give name of field as string for JOIN USING?
+		#' Add children to this JOIN clause.
+		#' 
+		#' This sets the type based on the last element we add.
 		add_children = function(...) {
 			args <- list(...)
 			if (inherits(args[[1]], 'SelectableElement')) {
@@ -176,13 +179,13 @@ JoinClause <- setRefClass('JoinClause',
 		},
 			
 			
-		# Shorthand syntax for JOIN USING gives only fields. In this case, we take the table
-		# the first argument (all arguments must be from the same table).
-		# Shorthand syntax for JOIN ON gives only an expression composed of fields. In this case,
-		# we take the table of the leftmost field.
-		#' TODO: make type a field, rather than an option.
+		#' Add a child to this JOIN clause.
+		#' 
+		#' Shorthand syntax for JOIN USING gives only fields. In this case, we take the table
+		#' the first argument (all arguments must be from the same table).
+		#' Shorthand syntax for JOIN ON gives only an expression. In this case,
+		#' we take the table of the leftmost field.
 		add_child = function(child, name, after) {
-			# This sets the type based on the last element we see -- which is what we want.
 			if (inherits(child, 'IntrospectedTable')) {
 				type <<- 'NATURAL JOIN'
 				add_table(child)

@@ -108,33 +108,42 @@ SelectStatement <- setRefClass('SelectStatement',
 		},
 		
 		join = function(...) {
-			if (is.null(.children$joins)) .children$joins <<- ClauseList$new(.self)
+			if (is.null(.children$joins)) 
+				.children$joins <<- ClauseList$new(.self)
+			
 			join.clause <- JoinClause$new(.children$joins)
 			.children$joins$add_child(join.clause$add_children(...))
 			.self
 		},
 		
-		#' TODO: the logic for the next four below is the same in every case. 
 		where = function(...) {
-			if (!'where' %in% names(.children)) .children$where <<- WhereClause$new(.self)
+			if (is.null(.children$where)) 
+				.children$where <<- WhereClause$new(.self)
+			
 			.children$where$add_children(...)
 			.self
 		},
 		
 		group = function(...) {
-			if (is.null(.children$group)) .children$group <<- GroupClause$new(.self)
+			if (is.null(.children$group)) 
+				.children$group <<- GroupClause$new(.self)
+			
 			.children$group$add_children(...)
 			.self
 		},
 		
 		having = function(...) {
-			if (is.null(.children$having)) .children$having <<- HavingClause$new(.self)
+			if (is.null(.children$having)) 
+				.children$having <<- HavingClause$new(.self)
+			
 			.children$having$add_children(...)
 			.self
 		},
 		
 		order = function(...) {
-			if (is.null(.children$order)) .children$order <<- OrderClause$new(.self)
+			if (is.null(.children$order)) 
+				.children$order <<- OrderClause$new(.self)
+			
 			.children$order$add_children(...)
 			.self
 		},
@@ -156,9 +165,8 @@ SelectStatement <- setRefClass('SelectStatement',
 			execute(...)$one()
 		},
 		
-		# TODO: potential design decision here. prepare is database-agnostic preparation.
-		# Could also add, dbPrepare for database-specific preparation. For dbPrepare, some sort 
-		# of rider responsible for database-specific behavior tags along as we walk down the tree.
+		#' Prepare this statement, infer tables, check for ambiguous field names, 
+		#' and set options for the compiler
 		prepare = function() {
 			unprepared.children <<- .children
 			prepared.children <- list()
@@ -172,6 +180,7 @@ SelectStatement <- setRefClass('SelectStatement',
 			.children <<- prepared.children
 		},		
 		
+		#' Restore this statement to the state it was in before `prepare()` was called.
 		restore = function() {
 			.children <<- unprepared.children
 		},
@@ -189,11 +198,9 @@ SelectStatement <- setRefClass('SelectStatement',
 	)
 )
 
-# This stuff needs some more thought and is untested.
+# This stuff needs some more thought and is basically untested.
 
-#' Generate a new `SELECT`, unbound to any session.
-#' 
-#' For example, to 
+#' Generate a new `SelectStatement`, unbound to any session.
 select <- function(...) {
 	SelectStatement$new()$select(...)
 }

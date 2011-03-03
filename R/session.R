@@ -1,10 +1,4 @@
-.LIBRARIES <- list(
-	MySQL = 'RMySQL'
-)
-
 #' Represents a session: a collection of connections to the same database with the same parameters.
-#' 
-#' DONE: support group for non-default group connections.
 Session <- setRefClass('Session',
 	contains = c(
 		'DatabasrObject'
@@ -92,18 +86,13 @@ Session <- setRefClass('Session',
 		},
 		
 		finish = function() {
-			try({
-				if (get_option('finished')) {
-					warning('Session has already been finished.')
-				} else {
-					suppressMessages({
-					  for (connection in connections) 
-							try(dbDisconnect(connection), silent = TRUE)
-					#  try(dbUnloadDriver(driver), silent = TRUE)
-					})
-					set_options(finished = TRUE)
+			suppressMessages({
+			  for (connection in connections) {
+					try(dbDisconnect(connection), silent = TRUE)
+					try(dbUnloadDriver(driver), silent = TRUE)
 				}
-			}, silent = TRUE)
+			})
+			set_options(finished = TRUE)
 		},
 		
 		finalize = function() {
@@ -113,23 +102,26 @@ Session <- setRefClass('Session',
 )
 
 	
-do_with <- function(session, query, func) {
+.do_with <- function(session, query, func) {
 	connection <- session$request()
 	result <- func(connection$connection, query)
 	session$release(connection)
 	result
 }
 
-send_with <- function(session, query) {
-	do_with(session, query, dbSendQuery)
+#' Call dbSendQuery with the given statement, using a temporary connection.
+send_with <- function(session, statement) {
+	.do_with(session, statement, dbSendQuery)
 }
-sendWith <- send_with
 
-get_with <- function(session, query) {
-	do_with(session, query, dbGetQuery)
+#' Call dbGetQuery with the given statement, using a temporary connection.
+get_with <- function(session, statement) {
+	.do_with(session, statement, dbGetQuery)
 }
-getWith <- get_with
 
+#' Escape SQL-special characters in the given values.
+#' 
+#' Only the MySQL driver implements this method, so we ought to handle this ourselves.
 escape <- function(session, values) {
 	connection <- session$request()
 	escaped <- dbEscapeStrings(connection$connection, values)

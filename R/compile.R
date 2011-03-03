@@ -22,11 +22,15 @@ Compiler <- setRefClass('Compiler',
 			)
 		},
 		
+		#' Setup the compiler.
+		#' 
+		#' This method is called from `initialize` in subclasses.
 		prepare = function() {
 			identifier.base <<- str_c(identifier.quote, '%s', identifier.quote)
 			.self
 		},
 		
+		#' Dispatch compilation on the statement and return a formatted string.
 		compile = function() {
 			lines <- dispatch(statement)
 			formatter$finish(lines)
@@ -51,6 +55,7 @@ Compiler <- setRefClass('Compiler',
 			unlist(sapply(value$.children[indices], dispatch))
 		},
 		
+		#' Compile an SQL identifier according to the standard of the current database.
 		compileIdentifier = function(...) {
 			args <- paste(list(...), collapse = identifier.collapse)
 			str_c(
@@ -59,6 +64,7 @@ Compiler <- setRefClass('Compiler',
 			)
 		},
 		
+		#' Compile an `AsIs` object.
 		compileAsIs = function(value) {
 			value
 		},
@@ -83,6 +89,8 @@ Compiler <- setRefClass('Compiler',
 		##
 		# R literals.
 		##
+
+		#' Compile a vector.
 		compileVector = function(value, quote = FALSE) {
 			if (quote) 
 				value <- sprintf("'%s'", value)
@@ -90,6 +98,7 @@ Compiler <- setRefClass('Compiler',
 			return(sprintf('(%s)', str_c(value, collapse = ', ')))
 		},
 		
+		#' Compile an integer vector.
 		compileInteger = function(value) {
 			if (length(value) > 1) 
 				compileVector(value)
@@ -97,6 +106,7 @@ Compiler <- setRefClass('Compiler',
 				value
 		},
 		
+		#' Compile a numeric vector.
 		compileNumeric = function(value) {
 			if (length(value) > 1) 
 				compileVector(value)
@@ -104,6 +114,7 @@ Compiler <- setRefClass('Compiler',
 				value
 		},
 		
+		#' Compile a character vector.
 		compileCharacter = function(value) {
 			if (length(value) > 1) 
 				compileVector(value, TRUE)
@@ -111,6 +122,7 @@ Compiler <- setRefClass('Compiler',
 				sprintf("'%s'", value)
 		},
 		
+		#' Compile a logical vector of length one.
 		compileLogical = function(value) {
 			if (is.na(value)) 
 				'NULL'
@@ -124,7 +136,7 @@ Compiler <- setRefClass('Compiler',
 		# Atomic elements.
 		## 
 
-		#' TODO here: possible aliasing?
+		#' Compile a table.
 		compileTable = function(value) {
 			name <- compileIdentifier(value$get_name())
 			if (!is.null(value$.alias)) 
@@ -133,6 +145,7 @@ Compiler <- setRefClass('Compiler',
 				name
 		},
 		
+		#' Compile a field.
 		compileField = function(value) {
 			# If the value's parent is a JOIN clause, it must be JOIN ... USING ..., in which case we
 			# want only the name of the field.
@@ -162,14 +175,20 @@ Compiler <- setRefClass('Compiler',
 		# Non-atomic elements.
 		##
 
+		# Tuples and lists are handled nearly identically - for a tuple, we dispatch compilation to
+		# its children. For a list, we apply compilation to its elements.
+
+		#' Compile a tuple.
 		compileTupleElement = function(value) {
 			str_c('(', str_c(dispatch_children(value), collapse = ', '), ')')
 		},
 		
+		#' Compile a list.
 		compileList = function(value) {
 			str_c('(', str_c(unlist(sapply(value, dispatch)), collapse = ', '), ')')
 		},
 		
+		#' Compile a function.
 		compileFunctionElement = function(value) {
 			func <- str_c(value$func, '(')
 			func <- str_c(func, str_c(dispatch_children(value), collapse = ', '), ')')
@@ -182,7 +201,7 @@ Compiler <- setRefClass('Compiler',
 				func
 		},
 		
-		
+		#' Compile a prefix operator - e.g. DISTINCT.
 		compilePrefixOperatorElement = function(value) {
 			compiled <- str_c(value$operator, str_c(dispatch_children(value), collapse = ', '), sep = ' ')
 			if (inherits(value$.parent, 'SelectClause'))
@@ -191,10 +210,12 @@ Compiler <- setRefClass('Compiler',
 				compiled
 		},
 		
+		#' Compile a postfix operator - e.g. ASC.
 		compilePostfixOperatorElement = function(value) {
 			str_c(dispatch_children(value), value$operator, sep = ' ')
 		},
 		
+		#' Compile a binary operator.
 		compileBinaryOperatorElement = function(value) {
 			compiled <- str_c(
 				dispatch(value$.children[[1]]), value$operator, dispatch(value$.children[[2]]), sep = ' '
@@ -205,6 +226,9 @@ Compiler <- setRefClass('Compiler',
 				compiled
 		},
 		
+		#' Compile a negatable binary operator.
+		#' 
+		#' This function just calls `compileBinaryOperatorElement`.
 		compileNegatableBinaryOperatorElement = function(value) {
 			compileBinaryOperatorElement(value)
 		},
@@ -212,9 +236,12 @@ Compiler <- setRefClass('Compiler',
 		##
 		# Clauses.
 		##
+		
+		#' Compile a SELECT clause. 
 		compileSelectClause = function(value) {
 		},
 		
+		#' Compile an UPDATE ... SET clause.
 		compileUpdateClause = function(value) {
 			formatter$begin('UPDATE')$down()$line(dispatch_children(value, include = 1))
 			formatter$up()$line('SET')$down()$line(
@@ -222,22 +249,23 @@ Compiler <- setRefClass('Compiler',
 			)$up()$end()
 		},
 		
-		# These clauses should be lines, but check first.
+		#' Compile a FROM clause.
 		compileFromClause = function(value) {
 			formatter$begin('FROM')$down()$line(str_c(dispatch_children(value), collapse = ', '))
 			formatter$up()$end()
 		},
 		
+		# Note that in the current expression generation scheme several clause types only ever 
+		# have a single child as their binding clause -- the first (WHERE, HAVING) or second 
+		# (JOIN ON) one. For the sake of right now, we nonetheless collapse by ' '.
+
 		#' Compile a WHERE clause.
-		#' 
-		#' Note that in the current expression generation scheme several clause types only ever 
-		#' have a single child as their binding clause -- the first (WHERE, HAVING) or second 
-		#' (JOIN ON) one. For the sake of right now, we nonetheless collapse by ' '.
 		compileWhereClause = function(value) {
 			formatter$begin('WHERE')$down()$line(str_c(dispatch_children(value), collapse = ' '))
 			formatter$up()$end()
 		},
 		
+		#' Compile a [NATURAL] JOIN [ON] clause.
 		compileJoinClause = function(value) {
 			if (value$type == 'NATURAL JOIN') {
 				formatter$begin('NATURAL JOIN')$down()$line(dispatch_children(value, include = 1))
@@ -255,32 +283,37 @@ Compiler <- setRefClass('Compiler',
 			}
 		},
 		
+		#' Compile a GROUP BY clause.
 		compileGroupClause = function(value) {
 			formatter$begin('GROUP BY')$down()$line(str_c(dispatch_children(value), collapse = ', '))
 			formatter$up()$end()
 		},
 		
+		#' Compile a HAVING clause.
 		compileHavingClause = function(value) {
 			formatter$begin('HAVING')$down()$line(str_c(dispatch_children(value), collapse = ' '))
 			formatter$up()$end()
 		},
 		
+		#' Compile an ORDER clause.
 		compileOrderClause = function(value) {
 			formatter$begin('ORDER BY')$down()$line(str_c(dispatch_children(value), collapse = ', '))
 			formatter$up()$end()
 		},
 		
+		#' Compile a LIMIT clause.
 		compileLimitClause = function(value) {
 			formatter$begin('LIMIT')$to_line(dispatch_children(value))$end()
 		},
 		
+		#' Compile an OFFSET clause.
 		compileOffsetClause = function(value) {
 			formatter$begin('OFFSET')$to_line(dispatch_children(value))$end()
 		},
 		
-		##
-		# Clause lists.
-		## 
+		#' Compile a clause list.
+		#' 
+		#' Since all clauses manipulate the formatter directly, there is no return value.
 		compileClauseList = function(value) {
 			dispatch_children(value)
 		},
@@ -289,7 +322,10 @@ Compiler <- setRefClass('Compiler',
 		# Statements.
 		## 
 
-		#' Several possible approaches to deduping functions here. This is simplest.
+		#' Compile a statement.
+		#' 
+		#' Subclasses of `Statement` also use this function, as no special treatment 
+		#' seems necessary yet.
 		compileStatement = function(value) {
 			formatter$begin()
 			# We only want to parenthetize a statement if its included in a clause or other
@@ -304,12 +340,18 @@ Compiler <- setRefClass('Compiler',
 			
 			str_c(unlist(formatter$end()), collapse = '\n')
 		},
+		
+		#' Compile a SELECT statement.
 		compileSelectStatement = function(value) {
 			compileStatement(value)
 		},
+		
+		#' Compile an UPDATE statement.
 		compileUpdateStatement = function(value) {
 			compileStatement(value)
 		},
+		
+		#' Compile a statement operator.
 		compileStatementOperator = function(value) {
 			formatter$begin()
 			formatter$lines(dispatch_children(value, include = 1))
@@ -339,7 +381,7 @@ MySQLCompiler <- setRefClass('MySQLCompiler',
 		# Clauses.
 		##
 		
-		#' Compile a `SELECT` clause.
+		#' Compile a SELECT clause.
 		#' 
 		#' MySQL's behavior needs to diverge from (e.g.) Postgres', as Postgres should never issue
 		#' `COUNT(*)`.
