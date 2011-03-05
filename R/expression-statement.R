@@ -20,13 +20,15 @@ Statement <- setRefClass('Statement',
 		
 		# I think that ORDER could also be moved to the superclass?
 		limit = function(n) {
-			if (is.null(.children$limit)) .children$limit <<- LimitClause$new(.self)
+			if (is.null(.children$limit)) 
+				.children$limit <<- LimitClause$new(.self)
 			.children$limit$set_children(n)
 			.self
 		},
 		
 		offset = function(n) {
-			if (is.null(.children$offset)) .children$offset <<- OffsetClause$new(.self)
+			if (is.null(.children$offset)) 
+				.children$offset <<- OffsetClause$new(.self)
 			.children$offset$set_children(n)
 			.self
 		},
@@ -76,8 +78,8 @@ UpdateStatement <- setRefClass('UpdateStatement',
 )
 
 
-# TODO: consider closure function to do the dumb child-adding work. Also, support named children
-# and handling of setting parents.
+# TODO: consider closure function to do the dumb child-adding work. 
+# Also, support named children and handling of setting parents.
 SelectStatement <- setRefClass('SelectStatement',
 	contains = c(
 		'Statement'
@@ -180,12 +182,14 @@ SelectStatement <- setRefClass('SelectStatement',
 			.children <<- prepared.children
 		},		
 		
-		#' Restore this statement to the state it was in before `prepare()` was called.
+		#' Restore this statement to the state it was in 
+		#' before `prepare()` was called.
 		restore = function() {
 			.children <<- unprepared.children
 		},
 		
-		#' If this statement has no session, then a session must be the first argument to execute.
+		#' If this statement has no session, then a session must be the 
+		#' first argument to execute.
 		execute = function(...) {
 			args <- list(...)
 			if (is.null(session)) {

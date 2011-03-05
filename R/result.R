@@ -29,10 +29,16 @@ Result <- setRefClass('Result',
 	),
 	methods = list(
 		#' Initialize the result for a given session and statement.
-		initialize = function(session, statement, fetch.size = NULL, mutable = FALSE) {
+		initialize = function(session, statement, 
+													fetch.size = NULL, mutable = FALSE) {
 			initFields(
-				session = session, connection = NULL, SQL = statement$SQL(),
-				result.set = NULL, result = NULL, introspected = NULL, pending = list()
+				session = session, 
+				connection = NULL, 
+				SQL = statement$SQL(),
+				result.set = NULL, 
+				result = NULL, 
+				introspected = NULL, 
+				pending = list()
 			)
 			callSuper()
 			
@@ -74,7 +80,8 @@ Result <- setRefClass('Result',
 			get_result()[1, ]
 		},
 		
-		#' Get the first row in the result set, checking that that row is the only one.
+		#' Get the first row in the result set, checking that 
+		#' that row is the only one.
 		one = function() {
 			get(2)
 			if (get_affected_count() > 1) 
@@ -122,7 +129,8 @@ Result <- setRefClass('Result',
 				if (n == -1) {
 					old.result <- result
 					result <<- fetch(result.set, n)
-					result[(nrow(result) + 1):(nrow(result) + nrow(old.result)), ] <<- old.result
+					indices <- (nrow(result) + 1):(nrow(result) + nrow(old.result))
+					result[indices] <<- old.result
 				} else {
 					new.result <- fetch(result.set, n)
 					result[1:nrow(new.result) + nrow(result), ] <<- new.result
@@ -158,7 +166,8 @@ Result <- setRefClass('Result',
 		},
 		
 		
-		#' I'm not sure when to use dbCommit, and when to send the equivalent query.
+		#' I'm not sure when to use dbCommit, 
+		#' and when to send the equivalent query.
 		flush = function() {
 			flush.connection <- session$request('flush')
 			dbSendQuery(flush.connection$connection, 'START TRANSACTION;')
@@ -187,18 +196,26 @@ Result <- setRefClass('Result',
 					
 				if (!is.null(from.clause) && length(from.clause$tables) > 1) 
 					stop.message <- 'Cannot alter result FROM multiple tables.'
+
 				else if (!is.null(join.clauses) && join.clauses$has_children())
 					stop.message <- 'Cannot alter JOIN result.'
+
 				introspected <<- from.clause$tables[[1]]
 				
 				table.keys <- vapply(
-					introspected$.fields[introspected$.key], function(k) k$name, character(1)
+					introspected$.fields[introspected$.key], 
+					function(k) k$name, 
+					character(1)
 				)
+													 
 				select.keys <- vapply(
-					statement$.children$select$.children, function(k) k$name, character(1)
+					statement$.children$select$.children, 
+					function(k) k$name, 
+					character(1)
 				)
 				
-				if (length(introspected$.key) == 0 || !have_same_elements(table.keys, select.keys))
+				if (length(introspected$.key) == 0 || 
+						!have_same_elements(table.keys, select.keys))
 					stop.message <- 'Cannot alter result lacking complete primary key.'
 
 				statement$restore()
@@ -222,7 +239,8 @@ Result <- setRefClass('Result',
 	if (i > result$get_option('affected.row.count')) 
 		stop(sprintf('Index %d is out of bounds.', i))
 	
-	delta <- max(result$get_option('fetch.size'), i - result$get_option('fetched.row.count'))
+	delta <- max(result$get_option('fetch.size'), 
+							 i - result$get_option('fetched.row.count'))
 	result$get(delta)
 	
 	`[.data.frame`(result$result, i, j, ..., drop)
@@ -241,7 +259,8 @@ setMethod('$', 'Result', function(x, name) {
 	if (!result$get_option('started')) 
 		stop(str_c(
 			'Attempting to modify result that has not been populated.',
-			'Either access the result to trigger fetching or get() manually.', sep = ' '
+			'Either access the result to trigger fetching or get() manually.', 
+			sep = ' '
 		))
 		
 	if (missing(i)) 
@@ -262,16 +281,23 @@ setMethod('$', 'Result', function(x, name) {
 	
 	if (result$get_option('mutable')) {
 		if (i[length(i)] > nrow(result$result)) {
-			# PendingInsert: keep track of the indices and force flushing when new result is fetched
-			# if retain is false.
+			# PendingInsert: keep track of the indices and force 
+			# flushing when new result is fetched if retain is false.
 		} else {
 			for (k in seq_along(i)) {
 				update <- UpdateStatement$new()
 				update$update(result$introspected$as_table())
+				
 				for (l in j) 
-					update$set(result$introspected$.fields[[l]]$as_field() == result$result[i[k], j])
+					update$set(
+						result$introspected$.fields[[l]]$as_field() == 
+						result$result[i[k], j]
+					)
+				
 				for (l in result$introspected$.key)
-					update$where(result$introspected$.fields[[l]]$as_field() == keys[k, l])
+					update$where(
+						result$introspected$.fields[[l]]$as_field() == keys[k, l]
+					)
 				
 				result$pending <- c(result$pending, update)
 			}
@@ -279,22 +305,27 @@ setMethod('$', 'Result', function(x, name) {
 	}
 	result
 }
-#' \code{\link{rbind}} rows to a \code{\link{Result}} object, queueing them for insertion.
+#' \code{\link{rbind}} rows to a \code{\link{Result}} object, 
+#' queueing them for insertion.
 rbind.Result <- function(result, ..., deparse.level = 1) {
 	warning('Calling "rbind" on objects of class "Result" is not yet supported.')
 	result
 }
 
-#' Nicely format a \code{\link{Result}} object, displaying state and underyling result.
+#' Nicely format a \code{\link{Result}} object, 
+#' displaying state and underyling result.
 #' 
 #' @param x the object to print.
 #' @param nrows the number of rows of the result to display. 
 #' @return \code{NULL}, invisibly.
 setMethod('print', 'Result', function(x, nrows = 10, ...) {
 	cat('<An object of class "Result">\n')
+	
 	if (is.null(x$result) || nrow(x$result) == 0) {
-		if (x$get_option('started')) cat('* No results for this query.\n')
-		else cat('* No results have been fetched for this query.\n')
+		if (x$get_option('started')) 
+			cat('* No results for this query.\n')
+		else 
+			cat('* No results have been fetched for this query.\n')
 	} else {
 		if (nrows < nrow(x$result)) {
 			print(x$result[1:nrows, ])
@@ -304,9 +335,16 @@ setMethod('print', 'Result', function(x, nrows = 10, ...) {
 			cat('* Displaying all', nrow(x$result), 'rows.\n')
 		}
 	}
-	cat('* completed: ', x$get_option('finished'), ', affected: ', x$get_affected_count(), ' rows', sep = '')
-	if (x$get_option('mutable')) cat(', pending: ', length(x$pending), ' mutations', sep = '')
+	cat(
+		'* completed: ', x$get_option('finished'), 
+		', affected: ', x$get_affected_count(), ' rows', sep = ''
+	)
+	
+	if (x$get_option('mutable')) 
+		cat(', pending: ', length(x$pending), ' mutations', sep = '')
+	
 	cat('.\n', sep = '')
 })
+
 setMethod('show', 'Result', function(object) print(object))
 setMethod('dim', 'Result', function(x) c(nrow(x$result), ncol(x$result)))

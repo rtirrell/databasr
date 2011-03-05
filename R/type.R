@@ -75,7 +75,9 @@ create_type <- function(type.string) {
 	
 	if (str_detect(type.string, fixed("int"))) {
 		type.info <- str_match_all(type.string, "\\w*int\\((\\d+)\\).*")
-		type <- set_signed(IntegerType$new(bytes = as.integer(type.info[[1]][2])))
+		type <- set_signed(
+			IntegerType$new(bytes = as.integer(type.info[[1]][2]))
+		)
 	} 
 	
 	if (str_detect(type.string, fixed("char"))) {
@@ -86,7 +88,9 @@ create_type <- function(type.string) {
 	if (str_detect(type.string, fixed("decimal"))) {
 		type.info <- str_match_all(type.string, "decimal\\((\\d+),(\\d+)\\).*")
 		type <- set_signed(DecimalType$new(
-			bytes = as.integer(type.info[[1]][2]), decimal.bytes = as.integer(type.info[[1]][3])
+			bytes = as.integer(
+				type.info[[1]][2]), decimal.bytes = as.integer(type.info[[1]][3]
+			)
 		))
 	}  
 	

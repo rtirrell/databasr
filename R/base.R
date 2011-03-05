@@ -25,7 +25,8 @@ DatabasrObject <- setRefClass('DatabasrObject',
 			.self
 		},
 		
-		#' Get a counter by name - create with value 1 if it does not exist, increment otherwise.
+		#' Get a counter by name - create with value 1 if it does not exist, 
+		#' increment otherwise.
 		get_counter = function(counter.name) {
 			if (!counter.name %in% names(.options)) 
 				.options[[counter.name]] <<- 1
@@ -62,8 +63,8 @@ SQLObject <- setRefClass('SQLObject',
 			length(.children) != 0
 		},
 		
-		#' Find children of this node of a given class. If self is TRUE, also include the node itself
-		#' in the search.
+		#' Find children of this node of a given class. 
+		#' If self is TRUE, also include the node itself in the search.
 		find_children = function(class, self = FALSE) {
 			class.children <- list()	
 			
@@ -71,14 +72,15 @@ SQLObject <- setRefClass('SQLObject',
 				class.children <- c(class.children, .self)
 			
 			for (child in .children) {
-				# TODO: should this be an either-or situation? As of now I can't think of a use-case for
-				# needing every child where a given class may contain other objects of that class.
+				# TODO: should this be an either-or situation? 
+				# As of now I can't think of a use-case for needing every child 
+				# where a given class may contain other objects of that class.
 				if (inherits(child, class)) 
 					class.children <- c(class.children, child)
 				else if (inherits(child, 'SQLObject') && child$has_children()) 
 					class.children <- c(class.children, child$find_children(class))
 			}
-			return(class.children)
+			class.children
 		},
 		
 		#' Set the children of this node to the given varargs.
@@ -118,8 +120,8 @@ SQLObject <- setRefClass('SQLObject',
 			args <- list(...)
 			
 			# Handle SELECT when using with(Table), which passes a list, 
-			# and WHERE, which passes a list if children are being joined to existing children
-			# by some boolean operator.
+			# and WHERE, which passes a list if children are 
+			# being joined to existing children by some boolean operator.
 			if (length(args) == 1 && is.list(args[[1]])) 
 				args <- unlist(args)
 			arg.names <- names(args)

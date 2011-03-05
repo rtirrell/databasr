@@ -89,10 +89,12 @@ SelectClause <- setRefClass('SelectClause',
 		#' If field names are unique, prefer using shorter aliases.
 		prepare = function() {
 			field.names <- c()
-			for (field in find_children('Field')) {
-				# Operator and function fields handle uniquely aliasing at compile-time.
-				if (!inherits(field$.parent, 'OperFunElement')) field.names <- c(field.names, field$name)
-			}
+			for (field in find_children('Field'))
+				# Operator and function fields handle uniquely 
+				# aliasing at compile-time.
+				if (!inherits(field$.parent, 'OperFunElement')) 
+					field.names <- c(field.names, field$name)
+			
 			field.counts <- table(field.names)
 			set_options(full.alias = names(field.counts)[field.counts > 1])
 			
@@ -122,8 +124,8 @@ FromClause <- setRefClass('FromClause',
 			callSuper(child$as_table())
 		},
 		
-		# Add any table named in select that is not in joins to the from clause. We may also want to
-		# look at the where clause.
+		# Add any table named in select that is not in joins to the from clause. 
+		# We may also want to look at the where clause.
 		prepare = function() {
 			table.names <- get_table_names()
 			if (!is.null(.parent$.children$joins))
@@ -171,8 +173,9 @@ JoinClause <- setRefClass('JoinClause',
 			if (inherits(args[[1]], 'SelectableElement')) {
 				table <- args[[1]]$find_children('Field', TRUE)[[1]]$table
 				add_table(table)
-				# TODO: this should probably be added in prepare. At that point, we can tell if this is the
-				# correct table (think JOIN ON CONCAT(other.table, this.table)).
+				# TODO: this should probably be added in prepare. 
+				# At that point, we can tell if this is the correct table 
+				# (think JOIN ON CONCAT(other.table, this.table)).
 				add_child(table$as_table(), 0)
 			}
 			callSuper(...)
@@ -210,20 +213,23 @@ BindingClause <- setRefClass('BindingClause',
 		add_children = function(...) {
 			args <- list(...)
 			
-			# Join this clause to an existing one. Then we pass a list - which add_children handle.
+			# Join this clause to an existing one. 
+			# Then we pass a list - which add_children handles.
 			if (length(.children) != 0) {
 				.children[[length(.children)]] <<- BinaryOperatorElement$new(
 					'AND', .children[[length(.children)]], args[[1]]
 				)$set_parent(.self)
 				
-				if (length(args) > 1) args <- args[2:length(args)]
-				else return(.self)
+				if (length(args) > 1) 
+					args <- args[2:length(args)]
+				else 
+					return(.self)
 			}
 			callSuper(args)
 		},
 		add_child = function(child, name, after) {
 			fields <- child$find_children('Field')
-			lapply(fields, function(f) add_table(f$table))
+			sapply(fields, function(f) add_table(f$table))
 			callSuper(child)
 		}
 	)
@@ -259,7 +265,8 @@ UpdateClause <- setRefClass('UpdateClause',
 			if (inherits(child, 'IntrospectedTable')) {
 				callSuper(child$as_table(), after = 0)
 				add_table(child)
-			} else callSuper(child)
+			} else 
+				callSuper(child)
 		}
 	)
 )

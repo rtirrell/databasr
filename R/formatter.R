@@ -1,7 +1,7 @@
 Formatter <- setRefClass('Formatter',
 	fields = c(
-		# A list of character vectors (i.e., a list where each element is a character vector of one
-		# or more lines).
+		# A list of character vectors (i.e., a list where each element is a 
+		# character vector of one or more lines).
 		'stack',
 		# The current stack level.
 		'level'
@@ -34,7 +34,9 @@ Formatter <- setRefClass('Formatter',
 		#' @return .self
 		line = function(line, padding = get_padding()) {
 			if (is.list(line)) line <- unlist(line)
-			stack[[length(stack)]] <<- c(stack[[length(stack)]], str_c(padding, line))
+			stack[[length(stack)]] <<- c(
+				stack[[length(stack)]], str_c(padding, line)
+			)
 			.self
 		},
 		
@@ -50,7 +52,9 @@ Formatter <- setRefClass('Formatter',
 		#' @return .self
 		to_line = function(value, sep = ' ') {
 			last <- length(stack[[length(stack)]])
-			stack[[length(stack)]][[last]] <<- str_c(stack[[length(stack)]][[last]], value, sep = sep)
+			stack[[length(stack)]][[last]] <<- str_c(
+				stack[[length(stack)]][[last]], value, sep = sep
+			)
 			.self
 		},
 		
@@ -74,7 +78,9 @@ Formatter <- setRefClass('Formatter',
 		#' Collapse the given lines by a newline and terminate with a semicolon.
 		finish = function(other.lines) {
 			other.lines <- unlist(other.lines)
-			other.lines[[length(other.lines)]] <- str_c(other.lines[[length(other.lines)]], ';')
+			other.lines[[length(other.lines)]] <- str_c(
+				other.lines[[length(other.lines)]], ';'
+			)
 			str_c(other.lines, collapse = '\n')
 		}
 	)

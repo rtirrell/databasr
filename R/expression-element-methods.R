@@ -39,10 +39,25 @@ setMethod('toupper', 'SelectableElement', function(x) {
 	FunctionElement$new('UPPER', x)
 })
 
+setMethod('log', 'SelectableElement', function(x, base = exp(1)) {
+	if (base == exp(1))
+		FunctionElement$new('LOG', x)
+	else 
+		FunctionElement$new('LOG', x, base)
+})
+
+setMethod('log10', 'SelectableElement', function(x) {
+	FunctionElement$new('LOG10', x)
+})
+
+setMethod('log2', 'SelectableElement', function(x) {
+	FunctionElement$new('LOG2', x)
+})
+
 `[.SelectableElement` <- function(x, i, j, drop = FALSE) {
 	if (!inherits(x$type, 'StringType')) {
-		# Indexing a non-string field with `[` is fine in SQL, but may not be the user's
-		# intention.
+		# Indexing a non-string field with `[` is fine in SQL, 
+		# but may not be the user's intention.
 		warning('Indexing a non-string field with `[`.')
 	}
 	FunctionElement$new('SUBSTRING', x, i[1], i[length(i)] - i[1] + 1)
@@ -58,7 +73,9 @@ setMethod('%ilike%', 'SelectableElement', function(selectable, value) {
 	BinaryOperatorElement$new('ILIKE', selectable, value)
 })
 
-setGeneric('concat', function(selectable, ..., sep = '') standardGeneric('concat'))
+setGeneric(
+	'concat', function(selectable, ..., sep = '') standardGeneric('concat')
+)
 setMethod('concat', 'SelectableElement', function(selectable, ..., sep = '') {
 	if (sep != '') FunctionElement$new('CONCAT_WS', sep, selectable, ...)
 	else FunctionElement$new('CONCAT', selectable, ...)
@@ -73,7 +90,8 @@ setMethod('instr', 'SelectableElement', function(selectable, ...) {
 # Operators.
 ##
 setMethod('%in%', c('SelectableElement', 'ANY'), function(x, table) {
-	if (!inherits(table, 'TupleElement')) table <- do.call(TupleElement$new, as.list(table))
+	if (!inherits(table, 'TupleElement')) 
+		table <- do.call(TupleElement$new, as.list(table))
 	NegatableBinaryOperatorElement$new('IN', x, table)
 })
 

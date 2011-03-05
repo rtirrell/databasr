@@ -67,9 +67,6 @@ as possible, and as such, we are aiming at what is very probably a moving target
 * Some kind of flush-by-interval or flush-by-count system. 
   This is not too hard to actually implement, but to do well requires some more thought.
  
-* Reconnecting of expired sessions? 
-  I remain wary of the warnings routinely thrown by Session, but I'm not sure they are avoidable
-  
 * Balance of sanity-checking at generation or compilation time versus at execution time (i.e.
   "You have an error in your SQL syntax").
   
@@ -86,3 +83,15 @@ as possible, and as such, we are aiming at what is very probably a moving target
 * `HAVING` -- the tests for `WHERE` mostly cover it.
 
 * Compilation of aliased operators.
+
+* Logarithms.
+
+* Reconnecting.
+
+> dbGetException(s)
+$errorNum
+[1] 2006
+
+$errorMsg
+[1] "MySQL server has gone away"
+

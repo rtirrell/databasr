@@ -23,21 +23,21 @@ setMethod('length', c('Statement'), function(x) {
 # Functions.
 ##
 setMethod('exists', 'SelectStatement', function(x) {
-		FunctionStatement$new('EXISTS', x)
-	})	
+	FunctionStatement$new('EXISTS', x)
+})	
 
 ##
 # Operators.
 ##
 setMethod('|', c('SelectStatement', 'SelectStatement'), function(e1, e2) {
-		OperatorStatement$new('UNION', e1, e2)
-	})
+	OperatorStatement$new('UNION', e1, e2)
+})
 
 setMethod('&', c('SelectStatement', 'SelectStatement'), function(e1, e2) {
-		OperatorStatement$new('INTERSECT', e1, e2)
-	})
+	OperatorStatement$new('INTERSECT', e1, e2)
+})
 
 setMethod('-', c('SelectStatement', 'SelectStatement'), function(e1, e2) {
-		OperatorStatement$new('EXCEPT', e1, e2)
-	})
+	OperatorStatement$new('EXCEPT', e1, e2)
+})
 

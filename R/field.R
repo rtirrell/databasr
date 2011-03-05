@@ -25,9 +25,11 @@ IntrospectedField <- setRefClass('IntrospectedField',
 	)
 )
 
-#' Represents a field in an SQL expression. Since we can't multiply inherit or mixin
-#' directly, we have \code{\link{IntrospectedField}} inherit from \code{\link{SQLObject}},
-#' even though an \code{\link{IntrospectedField}} may never occur in an expression.
+#' Represents a field in an SQL expression. 
+#' Since we can't multiply inherit or mixin directly, 
+#' we have \code{\link{IntrospectedField}} inherit 
+#' from \code{\link{SQLObject}}, even though an 
+#' \code{\link{IntrospectedField}} may never occur in an expression.
 Field <- setRefClass('Field',
 	contains = c(
 		'IntrospectedField'
@@ -54,7 +56,8 @@ Field <- setRefClass('Field',
 	)
 )
 
-#' This is just a stub idea. Is there a way we can force initialization of fields?
+#' This is just a stub idea. Is there a way we can force 
+#' initialization of fields?
 #' Look at the slots of .refClassDef.
 mixin <- function(ref.class, name, func, fields = list()) {
 	if (is.null(ref.class$.mixed.in)) ref.class$.mixed.in <- list()

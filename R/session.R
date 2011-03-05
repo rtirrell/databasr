@@ -1,4 +1,5 @@
-#' Represents a session: a collection of connections to the same database with the same parameters.
+#' Represents a session: a collection of connections to the same 
+#' database with the same parameters.
 Session <- setRefClass('Session',
 	contains = c(
 		'DatabasrObject'
@@ -16,7 +17,8 @@ Session <- setRefClass('Session',
 	methods = list(
 		#' Create a new session.
 		#' 
-		#' At some point we may support custom connect (and possibly also disconnect) functions.
+		#' At some point we may support custom connect 
+		#' (and possibly also disconnect) functions.
 		initialize = function(..., connect.func = NULL) {
 			initFields(
 				parameters = list(...), 
@@ -44,34 +46,64 @@ Session <- setRefClass('Session',
 			.self
 		},
 		
-		connect = function() {
+		#' Add a new connection, increasing the pool's size by one.
+		add_connection = function() {
 			if (length(users) > length(connections))
-				connections[[length(connections) + 1]] <<- do.call(dbConnect, c(driver, parameters[-1]))
+				connections[[length(connections) + 1]] <<- connect()
 		},
 		
+		#' Add a new connection at the index of an expired one.
+		reconnect = function(index) {
+			connections[[index]] <<- connect()
+		},
+		
+		#' Return a new connection.
+		connect = function() {
+			do.call(dbConnect, c(driver, parameters[-1]))
+		},
+		
+		#' Ensure that a connection is not expired before handing it out.
+		check_connection = function(index) {
+			tryCatch(
+				dbGetInfo(connections[[index]]),
+				error = function(e) {
+					reconnect(index)
+				}
+			)
+			connections[[index]]
+		},
+		
+		#' Return a connection to a requesting user.
+		#' 
+		#' This method will use existing connections in the pool if available. 
+		#' We first check that those connections are not expired.
 		request = function(user = 'anonymous') {
 			which.unused <- which(is.na(users))
 			if (length(which.unused) > 0) {
 				users[[which.unused[1]]] <<- user
 				return(list(
-					connection = connections[[which.unused[1]]], parameters = parameters, 
+					connection = check_connection(which.unused[1]), 
+					parameters = parameters, 
 					index = which.unused[1]
 				))
 			}
 			
 			users[[length(users) + 1]] <<- user
-			connect()
+			add_connection()
 			
 			list(
 				connection = connections[[length(connections)]], 
+				parameters = parameters,
 				index = length(connections)
 			)
 		},
 		
+		#' Return a connection to the pool.
 		release = function(connection) {
 			users[[connection$index]] <<- NA
 		},
 		
+		#' List connectios in the pool.
 		list_connections = function() {
 			for (i in seq_along(connections)) {
 				cat(sprintf(
@@ -81,10 +113,13 @@ Session <- setRefClass('Session',
 			}
 		},
 		
+		#' Begin a new `SELECT` statement.
 		select = function(...) {
 			SelectStatement$new(session = .self)$select(...)
 		},
 		
+		#' Tear down a session, disconnecting all connections and 
+		#' unloading the database driver.
 		finish = function() {
 			suppressMessages({
 			  for (connection in connections) {
@@ -95,6 +130,7 @@ Session <- setRefClass('Session',
 			set_options(finished = TRUE)
 		},
 		
+		#' Destroy the session, finalizing it in the process.
 		finalize = function() {
 			finish()
 		}
@@ -104,9 +140,10 @@ Session <- setRefClass('Session',
 	
 .do_with <- function(session, query, func) {
 	connection <- session$request()
-	result <- func(connection$connection, query)
-	session$release(connection)
-	result
+	tryCatch(
+		func(connection$connection, query), 
+		finally = session$release(connection)
+	)
 }
 
 #' Call dbSendQuery with the given statement, using a temporary connection.

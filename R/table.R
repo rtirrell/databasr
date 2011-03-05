@@ -16,15 +16,18 @@ IntrospectedTable <- setRefClass('IntrospectedTable',
 	),
 	
 	methods = list(
-		#' Though \code{NULL} is more logical, we have to use an empty string for \code{.name} to 
-		#' prevent \code{\link{envRefClass}} from dying when the package is loaded (as it seems to 
+		#' Though \code{NULL} is more logical, we have to use an empty 
+		#' string for \code{.name} to prevent \code{\link{envRefClass}} 
+		#' from dying when the package is loaded (as it seems to 
 		#' instantiate all classes).
-		initialize = function(.session = NULL, .name = '', .database = NULL, .key = NULL) {
+		initialize = function(.session = NULL, .name = '', 
+													.database = NULL, .key = NULL) {
 			initFields(
 				.session = .session, .name = .name, .database = .database, .key = .key
 			)
 			callSuper()
-			# TODO: I think that all DBMS use '.' as an identifier separator, but need to check.
+			# TODO: I think that all DBMS use '.' as an identifier separator, 
+			# but need to check.
 			if (is.null(.database) && str_detect(.name, fixed('.'))) {
 				split.name <- unlist(str_split(.name, fixed('.')))
 				.database <<- split.name[1]
@@ -40,13 +43,20 @@ IntrospectedTable <- setRefClass('IntrospectedTable',
 		
 		# This should be renamed.
 		equals = function(other) {
-			if (get_name() != other$get_name()) return(FALSE)
-			if (!have_same_elements(.key, other$.key)) return(FALSE)
+			if (get_name() != other$get_name()) 
+				return(FALSE)
+			if (!have_same_elements(.key, other$.key)) 
+				return(FALSE)
 			
 			field.names <- vapply(.fields, function(f) f$name, character(1))
-			other.field.names <- vapply(other$.fields, function(f) f$name, character(1))
-			if (have_same_elements(field.names, other.field.names)) TRUE
-			else FALSE
+			other.field.names <- vapply(
+				other$.fields, function(f) f$name, character(1)
+			)
+			
+			if (have_same_elements(field.names, other.field.names)) 
+				TRUE
+			else 
+				FALSE
 		},
 		
 		as_table = function() {
@@ -99,8 +109,8 @@ Table <- setRefClass('Table',
 
 .RESERVED.NAMES <- union(Table$methods(), names(Table$fields()))
 
-#' When extracting an \code{\link{IntrospectedField}} object from this table, return the
-#' corresponding \code{\link{Field}} object.
+#' When extracting an \code{\link{IntrospectedField}} object from this table, 
+#' return the corresponding \code{\link{Field}} object.
 setMethod('$', 'IntrospectedTable', function(x, name) {
 	# TODO: we get different results from .field and from direct access.
 	if (name %in% names(x[['.fields']])) x[['.fields']][[name]]$as_field()
@@ -116,7 +126,11 @@ setMethod('$', 'IntrospectedTable', function(x, name) {
 #' @return a \code{\link{Table}} object representing this database table.
 introspect_table <- function(session, table, database = NULL) {
 	connection <- session$request()
-	description <- dbGetQuery(connection$connection, sprintf('DESCRIBE %s;', table))
+	
+	description <- dbGetQuery(
+		connection$connection, sprintf('DESCRIBE %s;', table)
+	)
+	
 	introspected <- IntrospectedTable$new(
 		.session = session, .database = database, .name = table, 
 		.key = which(description$Key == 'PRI')
@@ -133,7 +147,8 @@ introspect_table <- function(session, table, database = NULL) {
 		if (name %in% .RESERVED.NAMES) {
 			warning(sprintf(
 				str_c(
-					'Name `%s` is reserved, replacing with `%s_`. Access in R requires use of `%s_`. ',
+					'Name `%s` is reserved, replacing with `%s_`. ',
+					'Access in R requires use of `%s_`. ',
 					'The field will still be named by `%s` in results.'
 				)
 			))
@@ -146,7 +161,9 @@ introspect_table <- function(session, table, database = NULL) {
 	}
 	introspected$.fields <- fields
 	
-	if (!str_detect(table, fixed('.'))) introspected$.database <- session$database
+	if (!str_detect(table, fixed('.'))) 
+		introspected$.database <- session$database
+	
 	session$release(connection)
 	introspected
 }

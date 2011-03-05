@@ -1,6 +1,6 @@
 Element <- setRefClass('Element',
 	contains = c(
-		"SQLObject"
+		'SQLObject'
 	),
 	methods = list(
 		initialize = function() {
@@ -9,15 +9,15 @@ Element <- setRefClass('Element',
 	)
 )
 
-SelectableElement <- setRefClass("SelectableElement",
+SelectableElement <- setRefClass('SelectableElement',
 	contains = c(
-		"Element"
+		'Element'
 	)
 )
 
-TupleElement <- setRefClass("TupleElement",
+TupleElement <- setRefClass('TupleElement',
 	contains = c(
-		"SelectableElement"
+		'SelectableElement'
 	),
 	methods = list(
 		initialize = function(...) {
@@ -30,12 +30,12 @@ TupleElement <- setRefClass("TupleElement",
 tuple <- function(...) TupleElement$new(...)
 
 
-OperFunElement <- setRefClass("OperFunElement",
+OperFunElement <- setRefClass('OperFunElement',
 	contains = c(
-		"SelectableElement"
+		'SelectableElement'
 	),
 	fields = c(
-		"alias"
+		'alias'
 	),
 	methods = list(
 		initialize = function(alias = NULL) {
@@ -51,10 +51,10 @@ OperFunElement <- setRefClass("OperFunElement",
 
 FunctionElement <- setRefClass('FunctionElement',
 	contains = c(
-		"OperFunElement"
+		'OperFunElement'
 	),
 	fields = c(
-		"func"
+		'func'
 	),
 	methods = list(
 		initialize = function(func = NULL, ...) {
@@ -65,12 +65,12 @@ FunctionElement <- setRefClass('FunctionElement',
 	)
 )
 
-OperatorElement <- setRefClass("OperatorElement",
+OperatorElement <- setRefClass('OperatorElement',
 	contains = c(
-		"OperFunElement"
+		'OperFunElement'
 	),
 	fields = c(
-		"operator"
+		'operator'
 	),
 	methods = list(
 		initialize = function(operator = NULL) {
@@ -81,9 +81,9 @@ OperatorElement <- setRefClass("OperatorElement",
 )
 
 # TODO: add alias to BinaryOperatorElement, or alias on OperatorElement.
-BinaryOperatorElement <- setRefClass("BinaryOperatorElement",
+BinaryOperatorElement <- setRefClass('BinaryOperatorElement',
 	contains = c(
-		"OperatorElement"
+		'OperatorElement'
 	),
 	methods = list(
 		initialize = function(operator = NULL, left = NULL, right = NULL) {
@@ -95,19 +95,20 @@ BinaryOperatorElement <- setRefClass("BinaryOperatorElement",
 )
 
 
-#' Class for any binary operator (==, IN, IS) that is negatable (i.e. to !=, NOT IN, IS NOT).
+#' Class for any binary operator (==, IN, IS) that is negatable 
+#' (i.e. to !=, NOT IN, IS NOT).
 #' 
 #' I know this name is a little on the long side, but I like consistency.
-NegatableBinaryOperatorElement <- setRefClass("NegatableBinaryOperatorElement",
+NegatableBinaryOperatorElement <- setRefClass('NegatableBinaryOperatorElement',
 	contains = c(
-		"BinaryOperatorElement"
+		'BinaryOperatorElement'
 	),
 	methods = list(
 		initialize = function(operator = NULL, left = NULL, right = NULL) {
 			callSuper(operator = operator, left = left, right = right)
 			if (identical(right, NA)) {
-				if (operator == "=") operator <<- 'IS'
-				else if (operator == "!=") operator <<- 'IS NOT'
+				if (operator == '=') operator <<- 'IS'
+				else if (operator == '!=') operator <<- 'IS NOT'
 			}
 			.self
 		},
@@ -120,10 +121,11 @@ NegatableBinaryOperatorElement <- setRefClass("NegatableBinaryOperatorElement",
 
 
 
-# Class for any operator that is applied postfix to its argument (e.g. DESC or ASC).
-PostfixOperatorElement <- setRefClass("PostfixOperatorElement",
+#' Class for any operator that is applied postfix to its argument 
+#' (e.g. DESC or ASC).
+PostfixOperatorElement <- setRefClass('PostfixOperatorElement',
 	contains = c(
-		"OperatorElement"
+		'OperatorElement'
 	),
 	methods = list(
 		initialize = function(operator = NULL, left = NULL) {

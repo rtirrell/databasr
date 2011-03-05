@@ -1,4 +1,5 @@
-# Performs much better for character versus the below. Is marginally slower for numeric types.
+#' Performs much better for character versus the below. 
+#' Is marginally slower for numeric types.
 have_same_elements <- function(v1, v2) {
 	if (length(v1) != length(v2)) FALSE
 	else length(intersect(v1, v2)) == length(v1)
