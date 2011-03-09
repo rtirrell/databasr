@@ -23,7 +23,10 @@ IntrospectedTable <- setRefClass('IntrospectedTable',
 		initialize = function(.session = NULL, .name = '', 
 													.database = NULL, .key = NULL) {
 			initFields(
-				.session = .session, .name = .name, .database = .database, .key = .key
+				.session = .session, 
+				.name = .name, 
+				.database = .database, 
+				.key = .key
 			)
 			callSuper()
 			# TODO: I think that all DBMS use '.' as an identifier separator, 
@@ -36,6 +39,7 @@ IntrospectedTable <- setRefClass('IntrospectedTable',
 			.self
 		},
 		
+		# Can this go in Table only?
 		get_name = function() {
 			if (is.null(.database)) .name
 			else str_c(.database, .name, sep = '.')
@@ -72,7 +76,8 @@ IntrospectedTable <- setRefClass('IntrospectedTable',
 
 #' Represents a table in a query.
 #' 
-#' I think it's okay that alias is redefined here, as we also add additional behavior.
+#' I think it's okay that alias is redefined here, 
+#' as we also add additional behavior. 
 Table <- setRefClass('Table',
 	contains = c(
 		'IntrospectedTable'
@@ -121,8 +126,9 @@ setMethod('$', 'IntrospectedTable', function(x, name) {
 #' 
 #' @param session the \code{\link{Session}} object.
 #' @param table the name of the table.
-#' @param database the name of the database this table resides in. If \code{NULL}, this will be 
-#'   taken from the database name of the \code{\link{Session}} object.
+#' @param database the name of the database this table resides in. 
+#' 	 If \code{NULL}, this will be taken from the database name of 
+#'   the \code{\link{Session}} object.
 #' @return a \code{\link{Table}} object representing this database table.
 introspect_table <- function(session, table, database = NULL) {
 	connection <- session$request()
@@ -141,7 +147,9 @@ introspect_table <- function(session, table, database = NULL) {
 	for (i in seq_len(nrow(description))) {
 		name <- description$Field[i]
 		field.object <- IntrospectedField$new(
-			name = name, table = introspected, type = create_type(description$Type[i])
+			name = name, 
+			table = introspected, 
+			type = create_type(description$Type[i])
 		)
 		
 		if (name %in% .RESERVED.NAMES) {

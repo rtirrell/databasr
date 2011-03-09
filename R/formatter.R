@@ -30,7 +30,8 @@ Formatter <- setRefClass('Formatter',
 		#' Begin a new line.
 		#' 
 		#' @param line new line.
-		#' @param padding padding to prepend to the line, defaults to \code{\link{get_padding}}.
+		#' @param padding padding to prepend to the line, 
+		#' defaults to \code{\link{get_padding}}.
 		#' @return .self
 		line = function(line, padding = get_padding()) {
 			if (is.list(line)) line <- unlist(line)
@@ -41,7 +42,8 @@ Formatter <- setRefClass('Formatter',
 		},
 		
 		lines = function(other.lines, padding = get_padding()) {
-			for (other.line in other.lines) line(other.line, padding)
+			for (other.line in other.lines) 
+				line(other.line, padding)
 			.self
 		},
 		

@@ -4,7 +4,7 @@ context("Testing compilation of operator")
 # Test that we are not breaking our queries by making modifications at compile time. Previously,
 # NegatableBinaryOperators would break as follows:
 #   first time: compiles fine, but *we change the operator that is set*
-#   second time: compiles fine (but the SQL is broken, as it's missing an operator), 
+#   second time: compiles fine (but the sql is broken, as it's missing an operator), 
 #			but the operator doesn't match in our switch expression and becomes	NULL.
 #		third time: dies with NULL operator.
 statements <- list(
@@ -14,8 +14,8 @@ statements <- list(
 )
 	
 for (statement in statements) {
-	compiled <- statement$SQL()
-	all.compiled <- replicate(5, statement$SQL())
+	compiled <- statement$sql()
+	all.compiled <- replicate(5, statement$sql())
 	expect_true(all(all.compiled == compiled))
 }
 
@@ -33,7 +33,7 @@ compiled <- list(
 	list("d1", "IS NULL")
 )
 
-statement.base <- prepareStatement("SELECT
+statement.base <- prepare_sql("SELECT
   `%database`.`databasr_test_3`.`i1` AS `i1`, `%database`.`databasr_test_3`.`d1` AS `d1`
 FROM
   `%database`.`databasr_test_3`
@@ -42,6 +42,6 @@ WHERE
 )
 
 for (i in seq_along(expressions)) {
-	statement <- session$select(db3)$where(expressions[[i]])$SQL()
+	statement <- session$select(db3)$where(expressions[[i]])$sql()
 	expect_equal(statement, do.call(sprintf, c(statement.base, compiled[[i]])))
 }

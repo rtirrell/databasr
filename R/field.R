@@ -14,8 +14,12 @@ IntrospectedField <- setRefClass('IntrospectedField',
 			callSuper()
 		},
 		
-		set_table = function(new.table) {
-			table <<- new.table
+		#' Set the table containing this field.
+		#' 
+		#' @param table table to set as the parent.
+		#' @return \code{.self}
+		set_table = function(table) {
+			table <<- table
 			.self
 		},
 		
@@ -44,8 +48,11 @@ Field <- setRefClass('Field',
 		},
 		
 		#' Alias this field to the given name.
-		as = function(name) {
-			alias <<- name 
+		#' 
+		#' @param alias an alias for the field.
+		#' @return \code{.self}
+		as = function(alias) {
+			alias <<- alias 
 			.self
 		},
 		
@@ -55,29 +62,3 @@ Field <- setRefClass('Field',
 		}
 	)
 )
-
-#' This is just a stub idea. Is there a way we can force 
-#' initialization of fields?
-#' Look at the slots of .refClassDef.
-mixin <- function(ref.class, name, func, fields = list()) {
-	if (is.null(ref.class$.mixed.in)) ref.class$.mixed.in <- list()
-	mixin.info <- list(name = name, func = func, fields = fields)
-	ref.class$.mixed.in[[name]] <- mixin.info
-	
-	wrapper <- function(...) {
-		mixin.info <- .self$TODO
-		if (!exists('.mixed.in', .self, inherits = FALSE)) {
-			field.names <- names(fields)
-			for (i in seq_along(fields)) {
-				if (!exists(field.names[[i]], .self, inherits = FALSE)) 
-					assign(field.names[[i]], fields[[i]], .self, inherits = FALSE)
-			}
-			assign('.mixed.in', TRUE, .self, inherits = FALSE)
-		}
-		func(...)
-	}
-	method.list <- list()
-	method.list[[name]] <- wrapper
-	do.call(ref.class$methods, method.list)
-}
-#mixin(Session, 'hello', function() print('hello'))

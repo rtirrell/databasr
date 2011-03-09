@@ -10,7 +10,7 @@ compiled <- list(
 	list("(", ")", "AND")
 )
 
-statement.base <- prepareStatement("SELECT
+statement.base <- prepare_sql("SELECT
   `%database`.`databasr_test_1`.`i1` AS `i1`
 FROM
   `%database`.`databasr_test_1`, `%database`.`databasr_test_2`
@@ -19,6 +19,6 @@ WHERE
 )
 
 for (i in seq_along(expressions)) {
-	statement <- session$select(db1$i1)$where(expressions[[i]])$SQL()
+	statement <- session$select(db1$i1)$where(expressions[[i]])$sql()
 	expect_equal(statement, do.call(sprintf, c(statement.base, compiled[[i]])))
 }

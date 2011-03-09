@@ -1,6 +1,6 @@
 context("Testing compilation of IN")
 
-statement.base <- prepareStatement("SELECT
+statement.base <- prepare_sql("SELECT
   `%database`.`databasr_test_1`.`i1` AS `i1`
 FROM
   `%database`.`databasr_test_1`
@@ -21,9 +21,9 @@ compiled <- list(
 
 for (i in seq_along(expressions)) {
 	q <- session$select(db1$i1)$where(expressions[[i]])
-	expect_equal(q$SQL(), sprintf(statement.base, compiled[[i]]))
+	expect_equal(q$sql(), sprintf(statement.base, compiled[[i]]))
 }
-statement.base <- prepareStatement("SELECT
+statement.base <- prepare_sql("SELECT
   `%database`.`databasr_test_2`.`v1` AS `v1`, `%database`.`databasr_test_2`.`v2` AS `v2`
 FROM
   `%database`.`databasr_test_2`
@@ -44,6 +44,6 @@ compiled <- list(
 )
 for (i in seq_along(expressions)) {
 	q <- session$select(db2$v1, db2$v2)$where(expressions[[i]])
-	expect_equal(q$SQL(), sprintf(statement.base, compiled[[i]]))
+	expect_equal(q$sql(), sprintf(statement.base, compiled[[i]]))
 }
 	

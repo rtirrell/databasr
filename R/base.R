@@ -10,11 +10,19 @@ DatabasrObject <- setRefClass('DatabasrObject',
 		},
 		
 		#' Get a single option by name.
+		#' 
+		#' @param name name of the option
+		#' @return the value of the named option. 
 		get_option = function(name) {
 			.options[[name]]
 		},
 		
-		#' Set one or more options, as name = value pairs.
+		#' Set one or more options.
+		#' 
+		#' All options must be named.
+		#' 
+		#' @param ... named (key = value) options
+		#' @return \code{.self}
 		set_options = function(...) {
 			opts <- list(...)
 			opt.names <- names(opts)
@@ -27,11 +35,14 @@ DatabasrObject <- setRefClass('DatabasrObject',
 		
 		#' Get a counter by name - create with value 1 if it does not exist, 
 		#' increment otherwise.
-		get_counter = function(counter.name) {
-			if (!counter.name %in% names(.options)) 
-				.options[[counter.name]] <<- 1
+		#' 
+		#' @param name name of the counter
+		#' @return the current value of the named counter
+		get_counter = function(name) {
+			if (name %in% names(.options)) 
+				.options[[name]] <<- .options[[name]] + 1
 			else 
-				.options[[counter.name]] <<- .options[[counter.name]] + 1
+				.options[[name]] <<- 1
 		}
 		
 	)
@@ -52,19 +63,30 @@ SQLObject <- setRefClass('SQLObject',
 			callSuper()
 		},
 		
-		#' Set the parent of this node.
+		#' Set the parent of this object.
+		#' 
+		#' @param parent object to set as this object's parent.
 		set_parent = function(parent) {
 			.parent <<- parent
 			.self
 		},
 		
-		#' Return TRUE if this node has any children, FALSE otherwise.
+		#' Check whether this object has children.
+		#' 
+		#' @return \code{TRUE} if this node has any children, 
+		#'   \code{FALSE} otherwise
 		has_children = function() {
 			length(.children) != 0
 		},
 		
-		#' Find children of this node of a given class. 
-		#' If self is TRUE, also include the node itself in the search.
+		#' Find children of this object that are a given class. 
+		#' 
+		#' @param class name of the class to find
+		#' @param self if \code{TRUE}, also include this object itself in the 
+		#'   search
+		#' 
+		#' @return a \code{list} of children of this object that are the given
+		#'   class.
 		find_children = function(class, self = FALSE) {
 			class.children <- list()	
 			
@@ -84,15 +106,17 @@ SQLObject <- setRefClass('SQLObject',
 		},
 		
 		#' Set the children of this node to the given varargs.
+		#' @return \code{.self}
 		set_children = function(...) {
 			.children <<- list()
 			add_children(...)
 		},
 		
-		#' Add a child to this node's children at the end, with an optional name.
+		#' Add a child to this object's children with an optional name.
 		#' 
 		#' @param child object to insert
 		#' @param name name of the object
+		#' @param position after which to insert the new child
 		#' @return \code{.self}
 		add_child = function(child, name = NULL, after) {
 			# I'd really only like to test for missingness.
@@ -115,7 +139,8 @@ SQLObject <- setRefClass('SQLObject',
 		
 		#' Add children to this node's children at the end. 
 		#' 
-		#' @param ... either a single list or a series of children to add in order.
+		#' @param ... either a single list or a series of children to add in order
+		#' @return \code{.self}
 		add_children = function(...) {
 			args <- list(...)
 			
@@ -133,6 +158,8 @@ SQLObject <- setRefClass('SQLObject',
 		},
 		
 		#' Prepare all children of this node that inherit from \code{SQLObject}.
+		#' 
+		#' @return \code{.self}
 		prepare = function() {
 			for (child in .children) {
 				if (inherits(child, 'SQLObject')) 

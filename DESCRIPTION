@@ -5,14 +5,15 @@ Version: 0.5
 Date: 2011-02-17
 Author: Robert Tirrell
 Maintainer: Robert Tirrell <r.tirrell@gmail.com>
-Description: Abstractions, wrappers and helpers for database access in R.
+Description: Abstractions, wrappers and helpers for database access in
+    R.
 License: BSD
 Depends: R (>= 2.12.0)
 LazyLoad: Yes
 Imports: methods, stringr, testthat, RMySQL
-Collate: 'base.R' 'compile.R' 'expression.R' 'expression-clause.R'
-    'expression-element.R' 'expression-element-methods.R' 
-    'expression-statement.R' 'expression-statement-methods.R' 
-    'expression-transaction.R' 'field.R' 'formatter.R' 'result.R' 
-    'session.R' 'table.R' 'type.R' 
-    'util.R' 'zzz.R'
+Collate: 'base.R' 'compile.R' 'connection.R' 'expression-clause.R'
+    'expression-element-methods.R' 'expression-element.R'
+    'expression.R' 'expression-statement-methods.R'
+    'expression-statement.R' 'expression-transaction.R' 'field.R'
+    'formatter.R' 'result.R' 'session.R' 'table.R' 'type.R' 'util.R'
+    'zzz.R'

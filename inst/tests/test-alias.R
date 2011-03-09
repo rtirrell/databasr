@@ -12,13 +12,13 @@ compiled <- list(
 	list('v1', 'v1', 'i1', 'i1')
 )
 
-statement.base <- prepareStatement('SELECT
+statement.base <- prepare_sql('SELECT
   `%database`.`databasr_test_1`.`%s` AS `%s`, `%database`.`databasr_test_2`.`%s` AS `%s`
 FROM
   `%database`.`databasr_test_1`, `%database`.`databasr_test_2`;'
 )
 
 for (i in seq_along(expressions)) {
-	statement <- do.call(session$select, expressions[[i]])$SQL()
+	statement <- do.call(session$select, expressions[[i]])$sql()
 	expect_equal(statement, do.call(sprintf, c(statement.base, compiled[[i]])))
 }

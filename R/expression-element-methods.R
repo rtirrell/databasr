@@ -81,9 +81,9 @@ setMethod('concat', 'SelectableElement', function(selectable, ..., sep = '') {
 	else FunctionElement$new('CONCAT', selectable, ...)
 })
 
-setGeneric('instr', function(selectable, ...) standardGeneric('instr'))
-setMethod('instr', 'SelectableElement', function(selectable, ...) {
-	FunctionElement$new('INSTR', selectable, ...)
+setGeneric('instr', function(selectable, s) standardGeneric('instr'))
+setMethod('instr', 'SelectableElement', function(selectable, s) {
+	FunctionElement$new('INSTR', selectable, s )
 })
 
 ##

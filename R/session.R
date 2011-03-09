@@ -1,5 +1,13 @@
 #' Represents a session: a collection of connections to the same 
 #' database with the same parameters.
+#' @slot database the name of the database associated with this session
+#' @slot driver a \code{\link{dbDriver}} object.
+#' @slot parameters parameters to \code{\link{dbConnect}}
+#' @slot connect.func currently unused
+#' @slot connections a list containing the connections in the session's pool
+#' @slot users a list containing the current users of connection in 
+#'   \code{connections}
+#' @export
 Session <- setRefClass('Session',
 	contains = c(
 		'DatabasrObject'
@@ -77,33 +85,42 @@ Session <- setRefClass('Session',
 		#' 
 		#' This method will use existing connections in the pool if available. 
 		#' We first check that those connections are not expired.
+		#' 
+		#' @param user a name to identify the requester.
+		#' @return a \code{\link{Connection}} object.
 		request = function(user = 'anonymous') {
 			which.unused <- which(is.na(users))
 			if (length(which.unused) > 0) {
 				users[[which.unused[1]]] <<- user
-				return(list(
+				return(Connection$new(
 					connection = check_connection(which.unused[1]), 
-					parameters = parameters, 
-					index = which.unused[1]
+					index = which.unused[1],
+					parameters = parameters 
 				))
 			}
 			
 			users[[length(users) + 1]] <<- user
 			add_connection()
 			
-			list(
+			Connection$new(
 				connection = connections[[length(connections)]], 
-				parameters = parameters,
-				index = length(connections)
+				index = length(connections),
+				parameters = parameters
 			)
 		},
 		
 		#' Return a connection to the pool.
+		#' 
+		#' @param connection a \code{\link{Connection}} object
+		#' @return \code{NULL}, invisibly.
 		release = function(connection) {
 			users[[connection$index]] <<- NA
+			invisible()
 		},
 		
-		#' List connectios in the pool.
+		#' List connections in the pool.
+		#' 
+		#' @return \code{NULL}, invisibly.
 		list_connections = function() {
 			for (i in seq_along(connections)) {
 				cat(sprintf(
@@ -111,6 +128,7 @@ Session <- setRefClass('Session',
 					str_c(attr(connections[[i]], 'Id'), collapse = ','), users[[i]]
 				))
 			}
+			invisible()
 		},
 		
 		#' Begin a new `SELECT` statement.
@@ -120,6 +138,8 @@ Session <- setRefClass('Session',
 		
 		#' Tear down a session, disconnecting all connections and 
 		#' unloading the database driver.
+		#' 
+		#' @return \code{NULL}, invisibly.
 		finish = function() {
 			suppressMessages({
 			  for (connection in connections) {
@@ -128,6 +148,7 @@ Session <- setRefClass('Session',
 				}
 			})
 			set_options(finished = TRUE)
+			invisible()
 		},
 		
 		#' Destroy the session, finalizing it in the process.
@@ -138,7 +159,7 @@ Session <- setRefClass('Session',
 )
 
 	
-.do_with <- function(session, query, func) {
+do_with <- function(session, query, func) {
 	connection <- session$request()
 	tryCatch(
 		func(connection$connection, query), 
@@ -147,18 +168,38 @@ Session <- setRefClass('Session',
 }
 
 #' Call dbSendQuery with the given statement, using a temporary connection.
+#' 
+#' Send the given statement to the database and return the
+#'   results, using a temporary connection.
+#' 
+#' @param session a \code{\link{Session}} object
+#' @param statement a character vector of length one, the statement to execute
+#' @return the result of sending the given statement.
+#' @export
 send_with <- function(session, statement) {
-	.do_with(session, statement, dbSendQuery)
+	do_with(session, statement, dbSendQuery)
 }
 
 #' Call dbGetQuery with the given statement, using a temporary connection.
+#' 
+#' Get the given statement from the database and return the
+#'   results, using a temporary connection.
+#' 
+#' @param session a \code{\link{Session}} object
+#' @param statement a character vector of length one, the statement to execute
+#' @return the result of getting the given statement.
+#' @export
 get_with <- function(session, statement) {
-	.do_with(session, statement, dbGetQuery)
+	do_with(session, statement, dbGetQuery)
 }
 
 #' Escape SQL-special characters in the given values.
 #' 
-#' Only the MySQL driver implements this method, so we ought to handle this ourselves.
+#' Only the MySQL driver implements this method, 
+#'   so we ought to handle this ourselves.
+#' @param session a \code{\link{Session}} object
+#' @param values a character vector, the values to escape
+#' @return the escaped values.
 escape <- function(session, values) {
 	connection <- session$request()
 	escaped <- dbEscapeStrings(connection$connection, values)

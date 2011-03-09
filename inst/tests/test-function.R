@@ -1,6 +1,7 @@
+# Why test compilation - it's way easier to test results.
 context("Testing compilation of functions")
 
-statement.base <- prepareSQL("SELECT
+statement.base <- prepare_sql("SELECT
   `%database`.`databasr_test_4`.`i1` AS `i1`, %s`%database`.`databasr_test_4`.`d1`%s AS `%s`
 FROM
   `%database`.`databasr_test_4`;"
@@ -26,18 +27,18 @@ compiled <- list(
 )
 
 for (i in seq_along(expressions)) {
-	statement <- session$select(db4$i1, expressions[[i]])$SQL()
+	statement <- session$select(db4$i1, expressions[[i]])$sql()
 	expect_equal(statement, do.call(sprintf, c(statement.base, compiled[[i]])))
 }
 	
 
-statement.base <- prepareSQL("SELECT
+statement.base <- prepare_sql("SELECT
   CONCAT(`%database`.`databasr_test_4`.`i1`, `%database`.`databasr_test_4`.`d1`) AS `%s`
 FROM
   `%database`.`databasr_test_4`;"
 )
 
-statement <- session$select(concat(db4$i1, db4$d1))$SQL()
+statement <- session$select(concat(db4$i1, db4$d1))$sql()
 expect_equal(statement, sprintf(statement.base, "concat_1"))
-statement <- session$select(concat(db4$i1, db4$d1)$as("concat_id"))$SQL()
+statement <- session$select(concat(db4$i1, db4$d1)$as("concat_id"))$sql()
 expect_equal(statement, sprintf(statement.base, "concat_id"))

@@ -168,6 +168,8 @@ JoinClause <- setRefClass('JoinClause',
 		#' Add children to this JOIN clause.
 		#' 
 		#' This sets the type based on the last element we add.
+		#' @param ... arguments to add as children.
+		#' @return \code{.self}
 		add_children = function(...) {
 			args <- list(...)
 			if (inherits(args[[1]], 'SelectableElement')) {
@@ -188,6 +190,11 @@ JoinClause <- setRefClass('JoinClause',
 		#' the first argument (all arguments must be from the same table).
 		#' Shorthand syntax for JOIN ON gives only an expression. In this case,
 		#' we take the table of the leftmost field.
+		#' 
+		#' @param child child to add.
+		#' @param name name of the child in this object's list of children.
+		#' @param after index after which to add the child.
+		#' @return \code{.self}
 		add_child = function(child, name, after) {
 			if (inherits(child, 'IntrospectedTable')) {
 				type <<- 'NATURAL JOIN'

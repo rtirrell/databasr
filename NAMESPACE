@@ -1,3 +1,2 @@
-import(RMySQL)
-import(stringr)
-exportPattern("^[^\\.]")
+export(have_same_elements)
+export(capitalize)

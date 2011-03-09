@@ -1,18 +1,24 @@
-#' Class to wrap SELECT queries, supporting modification and pseudo-intelligent fetch.
+#' Class to wrap \code{SELECT} queries, supporting modification and 
+#' pseudo-intelligent fetch.
 #' 
-#' A result may be in four states with respect to connections and result (sets).
+#' A result may be in four states with respect to connections 
+#' and result sets.
 #' \itemize{ 
-#'  \item Neither finished nor started. It has no connection, no result set, and no results.
-#' 	\item Started but not finished. It has a connection, a result set, and perhaps results.
-#'  \item Finished but not started. It has no connection, no result set, and no results. 
-#' 	 The associated statement was never executed before the result was torn down.
-#' 	\item Both started and finished. It has no connection, no result set, and results.
+#'  \item Neither finished nor started. 
+#' 		It has no connection, no result set, and no results.
+#' 	\item Started but not finished. 
+#' 		It has a connection, a result set, and may have fetched results.
+#'  \item Finished but not started. 
+#' 		It has no connection, no result set, and no results. 
+#' 		The associated statement was never executed before the result was 
+#' 		torn down.
+#' 	\item Both started and finished. 
+#' 		It has no connection, no result set, and results.
 #' }
-#' In short, a result is started when the query is sent.
-#' A non-mutable result is finished when dbHasCompleted returns TRUE.
 #' 
-#' @name Result
-#' @exportClass
+#' In short, a result is started when the query is sent.
+#' A non-mutable result is finished when \code{dbHasCompleted} 
+#' returns \code{TRUE}.
 Result <- setRefClass('Result',
 	contains = c(
 		'DatabasrObject'
@@ -21,7 +27,7 @@ Result <- setRefClass('Result',
 		'session',
 		'connection',
 		'statement',
-		'SQL',
+		'sql',
 		'result.set',
 		'result',
 		'introspected',
@@ -29,12 +35,23 @@ Result <- setRefClass('Result',
 	),
 	methods = list(
 		#' Initialize the result for a given session and statement.
+		#' 
+		#' @param session the session this result is associated with.
+		#'   Connections will be requested from this session. 
+		#'   Usually, this argument will be passed from the statement.
+		#' @param statement a subclass of \code{\link{Statement}}.
+		#' @param fetch.size the number of rows to fetch at a time, an
+		#'   integer vector of length one.
+		#' @param mutable whether the result of executing the statement
+		#'   should be considered mutable.
+		#' 
+		#' @return \code{.self}
 		initialize = function(session, statement, 
 													fetch.size = NULL, mutable = FALSE) {
 			initFields(
 				session = session, 
 				connection = NULL, 
-				SQL = statement$SQL(),
+				sql = statement$sql(),
 				result.set = NULL, 
 				result = NULL, 
 				introspected = NULL, 
@@ -46,8 +63,10 @@ Result <- setRefClass('Result',
 				fetch.size <- session$get_option('fetch.size')
 			
 			set_options(
-				fetch.size = fetch.size, fetched.row.count = 0, 
-				started = FALSE, finished = FALSE
+				fetch.size = fetch.size, 
+				started = FALSE, 
+				affected.row.count = 0,
+				finished = FALSE
 			)
 			check_mutable(statement, mutable)
 			
@@ -55,16 +74,20 @@ Result <- setRefClass('Result',
 		},
 		
 		#' Send the query.
+		#' 
+		#' @return \code{NULL}, invisibly.
 		send_query = function() {
 			set_options(started = TRUE)
 			connection <<- session$request('result')
-			result.set <<- dbSendQuery(connection$connection, SQL)
+			result.set <<- dbSendQuery(connection$connection, sql)
+			invisible(NULL)
 		},
 		
 		#' Fetch all rows for this query. 
 		#' 
-		#' If the result is marked mutable, then returns this object.
-		#' Otherwise, returns the underlying data frame.
+		#' @return If the result is mutable, this
+		#'   \code{\link{Result}} object.
+		#' Otherwise, the underlying \code{\link{data.frame}}.
 		all = function() {
 			get(-1)
 			
@@ -75,6 +98,8 @@ Result <- setRefClass('Result',
 		},
 		
 		#' Get the first row in the result set.
+		#' 
+		#' @return a \code{\link{data.frame}} with one row.
 		first = function() {
 			get(1)
 			get_result()[1, ]
@@ -82,6 +107,8 @@ Result <- setRefClass('Result',
 		
 		#' Get the first row in the result set, checking that 
 		#' that row is the only one.
+		#' 
+		#' @return a \code{\link{data.frame}} with one row.
 		one = function() {
 			get(2)
 			if (get_affected_count() > 1) 
@@ -91,35 +118,42 @@ Result <- setRefClass('Result',
 		},
 		
 		#' Get the underlying data frame, after finishing this result.
+		#' 
+		#' @return a \code{\link{data.frame}} containing all currently
+		#'   retained rows.
 		get_result = function() {
 			finish()
 			result
 		},
 		
 		#' Return the number of rows affected by this query.
+		#' 
+		#' @return the number of rows affected by this query, a numeric vector
+		#'   of length one.
 		get_affected_count = function() {
 			if (get_option('finished')) 
 				get_option('affected.row.count')
 			else if (get_option('started')) 
 				dbGetRowCount(result.set)
 			else 
-				NA
+				0
 		},
 		
-		#' Return the number of rows fetched so far.
-		get_fetched_count = function() {
-			get_option('fetched.row.count')
-		},
-		
+		#' Return the statement that this result represents the execution of.
+		#' 
+		#' @return the formatted statement, a character vector of length one.
 		get_statement = function() {
-			str_c(SQL, '\n')
+			str_c(sql, '\n')
 		},
 		
 		#' Fetch results from the result set.
 		#' 
-		#' @param n number of results to fetch (see documentation for \code{\link{Result}} for
-		#'   more information on the default for this, which is a class-level field)
-		#' @param retain whether to append to the old result or discard it completely
+		#' @param n number of results to fetch (see documentation for 
+		#' 	 \code{\link{Result}} for more information on the default for this, 
+		#' 	 which is a class-level field)
+		#' @param retain whether to append to the old result or discard 
+		#'   it completely
+		#' @return \code{.self}
 		get = function(n, retain = TRUE) {
 			if (missing(n)) n <- get_option('fetch.size')
 			
@@ -138,21 +172,28 @@ Result <- setRefClass('Result',
 			} else 
 				result <<- fetch(result.set, n)
 			
-			set_options(fetched.row.count = get_option('fetched.row.count') + n)
-			
 			if (dbHasCompleted(result.set) && !get_option('mutable')) 
 				finish()
 			
 			.self
 		},
 		
+		#' Check whether this \code{\link{Result}} object has pending mutations -
+		#' \code{UPDATE}s or \code{INSERT}s.
+		#' 
+		#' @return \code{NA} if this \code{\link{Result}} object is not mutable,
+		#'   \code{TRUE} if it is and there are pending mutations, 
+		#' 	 \code{FALSE} if it is and there are none.
 		is_dirty = function() {
+			if (!get_option('mutable')) return(NA)
 			length(pending) != 0
 		},
 		
 		#' Update information on the result set and return connections.
+		#' 
+		#' @return \code{.self}
 		finish = function() {
-			if (is_dirty()) 
+			if (identical(is_dirty(), TRUE)) 
 				warning('Finishing result with pending mutations.')
 			
 			pending <<- list()
@@ -166,25 +207,33 @@ Result <- setRefClass('Result',
 		},
 		
 		
+		#' Flush all pending mutations.
+		#' 
 		#' I'm not sure when to use dbCommit, 
 		#' and when to send the equivalent query.
+		#' 
+		#' @return \code{NULL}, invisibly.
 		flush = function() {
 			flush.connection <- session$request('flush')
 			dbSendQuery(flush.connection$connection, 'START TRANSACTION;')
 			for (mutation in pending) {
-				mutation.SQL <- mutation$SQL()
-				dbSendQuery(flush.connection$connection, mutation.SQL)
+				mutation.sql <- mutation$sql()
+				dbSendQuery(flush.connection$connection, mutation.sql)
 			}
 			
 			dbSendQuery(flush.connection$connection, 'COMMIT;')
 			pending <<- list()
 			session$release(flush.connection)
+			
+			invisible(NULL)
 		},
 		
 		
 		#' Check whether a result is mutable. 
 		#' 
 		#' If the user believes the result is mutable, we don't -- check first.
+		#' 
+		#' @return \code{NULL}, invisibly.
 		check_mutable = function(statement, mutable) {
 			set_options(mutable = mutable)
 			if (mutable) {
@@ -225,9 +274,40 @@ Result <- setRefClass('Result',
 				
 				set_options(mutable = TRUE)
 			}
+			invisible(NULL)
+		},
+		
+		#' Check whether the given rows and columns are in-bounds.
+		#' 
+		#' \code{stop()}s if either rows or columns are not.
+		#' 
+		#' @return \code{NULL}, invisibly.
+		check_bounds = function(i, j) {
+			if (!missing(i) && i > get_affected_count())
+				stop(sprintf('row %d is out of bounds.', i), call. = FALSE)
+			if (!missing(j) && j > length(result)) 
+				stop(sprintf('column %d is out of bounds.', j), call. = FALSE)
+			
+			invisible(NULL)
+			
+		},
+		
+		compute_offset_rows = function(i) {
+			rows <- i - get_affected_count() + nrow(result)
+			if (any(rows <= 0))
+				stop(str_c(
+						'requested rows that have already been fetched ',
+						'and disposed of. ',
+						'`get` was called with `retain = TRUE`.'
+					), call. = FALSE
+				)
+			rows
 		},
 		
 		#' When this object is being destroyed, make sure we wrap up politely.
+		#' 
+		#' @return this \code{\link{Result}} object, finalized.
+		#'   It has no fields and no methods.
 		finalize = function() {
 			finish()
 		}
@@ -235,16 +315,24 @@ Result <- setRefClass('Result',
 )
 
 #' Extract values from the underlying data frame.
-`[.Result` <- function(result, i, j, ..., drop = FALSE) {
-	if (i > result$get_option('affected.row.count')) 
-		stop(sprintf('Index %d is out of bounds.', i))
+#' 
+#' @param ... arguments passed to \code{[.data.frame]}.
+#' @export
+setMethod('[', c('Result', 'ANY', 'ANY'), function(x, i, j, ..., drop = FALSE) {
 	
-	delta <- max(result$get_option('fetch.size'), 
-							 i - result$get_option('fetched.row.count'))
-	result$get(delta)
+	if (!missing(i) && !x$get_option('finished') && 
+			i > x$get_affected_count()) {
+		delta <- max(
+			x$get_option('fetch.size'), i - x$get_affected_count()
+		)
+		x$get(delta)
+	}
 	
-	`[.data.frame`(result$result, i, j, ..., drop)
-}
+	x$check_bounds(i, j)
+	i <- x$compute_offset_rows(i)
+	
+	`[.data.frame`(x$result, i, j, ..., drop)
+})
 
 #' Access a field in the underlying data frame.
 setMethod('$', 'Result', function(x, name) {
@@ -267,6 +355,9 @@ setMethod('$', 'Result', function(x, name) {
 		i <- seq_len(nrow(result$result))
 	if (missing(j)) 
 		j <- seq_along(result$result)
+	
+	result$check_bounds(i, j)
+	i <- result$compute_offset_rows(i)
 	
 	if (result$get_option('mutable')) {
 		# This should check affected row count.
@@ -306,9 +397,11 @@ setMethod('$', 'Result', function(x, name) {
 	result
 }
 #' \code{\link{rbind}} rows to a \code{\link{Result}} object, 
-#' queueing them for insertion.
+#' adding them to it's list of pending mutations.
 rbind.Result <- function(result, ..., deparse.level = 1) {
-	warning('Calling "rbind" on objects of class "Result" is not yet supported.')
+	warning(
+		'Calling "rbind" on objects of class "Result" is not yet supported.'
+	)
 	result
 }
 
@@ -347,4 +440,13 @@ setMethod('print', 'Result', function(x, nrows = 10, ...) {
 })
 
 setMethod('show', 'Result', function(object) print(object))
+
+#' Get the dimensions of a \code{\link{Result}} object.
+#' @return the dimensions (number of rows and columns) of the result.
+#' @name dim
+#' @aliases dim,Result-method
+#' @docType methods
+#' @rdname dim,Result-method
+#' @export
 setMethod('dim', 'Result', function(x) c(nrow(x$result), ncol(x$result)))
+setMethod('length', 'Result', function(x) length(x$result))
