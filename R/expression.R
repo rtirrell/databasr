@@ -1,5 +1,13 @@
 .CLAUSE.ORDER <- c(
-	'select', 'from', 'joins', 'where', 'group', 'having', 'order', 'limit', 'offset'
+	'select', 
+	'from', 
+	'joins', 
+	'where', 
+	'group', 
+	'having', 
+	'order', 
+	'limit', 
+	'offset'
 )
 
 .OPERATOR.NAMES <- list(

@@ -54,15 +54,20 @@ setMethod('log2', 'SelectableElement', function(x) {
 	FunctionElement$new('LOG2', x)
 })
 
-`[.SelectableElement` <- function(x, i, j, drop = FALSE) {
-	if (!inherits(x$type, 'StringType')) {
-		# Indexing a non-string field with `[` is fine in SQL, 
-		# but may not be the user's intention.
-		warning('Indexing a non-string field with `[`.')
+#' Select a substring of a field or expression.
+#' @docType methods
+#' @export
+setMethod('[', c('SelectableElement', 'ANY', 'ANY'),
+	function(x, i, j, drop = FALSE) {
+		if (!inherits(x$type, 'StringType')) {
+			# Indexing a non-string field with `[` is fine in SQL, 
+			# but may not be the user's intention.
+			warning('Indexing a non-string field with `[`.')
+		}
+		FunctionElement$new('SUBSTRING', x, i[1], i[length(i)] - i[1] + 1)
 	}
-	FunctionElement$new('SUBSTRING', x, i[1], i[length(i)] - i[1] + 1)
-}
-
+)
+	
 setGeneric('%like%', function(selectable, value) standardGeneric('%like%'))
 setMethod('%like%', 'SelectableElement', function(selectable, value) {
 	BinaryOperatorElement$new('LIKE', selectable, value)

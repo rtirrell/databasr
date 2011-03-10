@@ -2,6 +2,11 @@
 # Modifiers.
 ##
 
+#' Set \code{LIMIT} and \code{OFFSET} on a statement.
+#' 
+#' @name [,Statement-method
+#' @aliases [
+#' @export
 setMethod('[', c('Statement', 'ANY', 'ANY'), function(x, i, ...) {
 	if (i[length(i)] == -1) x$offset(i[1] - 1)
 	else x$limit(i[length(i)] - i[1] + 1)$offset(i[1] - 1)

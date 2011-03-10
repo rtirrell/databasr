@@ -16,8 +16,8 @@ IntrospectedField <- setRefClass('IntrospectedField',
 		
 		#' Set the table containing this field.
 		#' 
-		#' @param table table to set as the parent.
-		#' @return \code{.self}
+		#' @param table table to set as the parent
+		#' @return \code{.self}.
 		set_table = function(table) {
 			table <<- table
 			.self
@@ -49,14 +49,15 @@ Field <- setRefClass('Field',
 		
 		#' Alias this field to the given name.
 		#' 
-		#' @param alias an alias for the field.
-		#' @return \code{.self}
+		#' @param alias an alias for the field
+		#' @return \code{.self}.
 		as = function(alias) {
 			alias <<- alias 
 			.self
 		},
 		
 		#' This is a no-op, returning this field.
+		#' @return \code{.self}.
 		as_field = function() {
 			.self
 		}

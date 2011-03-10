@@ -19,6 +19,7 @@
 #' In short, a result is started when the query is sent.
 #' A non-mutable result is finished when \code{dbHasCompleted} 
 #' returns \code{TRUE}.
+#' @export
 Result <- setRefClass('Result',
 	contains = c(
 		'DatabasrObject'
@@ -80,7 +81,7 @@ Result <- setRefClass('Result',
 			set_options(started = TRUE)
 			connection <<- session$request('result')
 			result.set <<- dbSendQuery(connection$connection, sql)
-			invisible(NULL)
+			invisible()
 		},
 		
 		#' Fetch all rows for this query. 
@@ -225,7 +226,7 @@ Result <- setRefClass('Result',
 			pending <<- list()
 			session$release(flush.connection)
 			
-			invisible(NULL)
+			invisible()
 		},
 		
 		
@@ -274,7 +275,7 @@ Result <- setRefClass('Result',
 				
 				set_options(mutable = TRUE)
 			}
-			invisible(NULL)
+			invisible()
 		},
 		
 		#' Check whether the given rows and columns are in-bounds.
@@ -288,7 +289,7 @@ Result <- setRefClass('Result',
 			if (!missing(j) && j > length(result)) 
 				stop(sprintf('column %d is out of bounds.', j), call. = FALSE)
 			
-			invisible(NULL)
+			invisible()
 			
 		},
 		
@@ -317,8 +318,12 @@ Result <- setRefClass('Result',
 #' Extract values from the underlying data frame.
 #' 
 #' @param ... arguments passed to \code{[.data.frame]}.
+#' 
+#' @name [,Result-method
+#' @aliases [
+#' @docType methods
 #' @export
-setMethod('[', c('Result', 'ANY', 'ANY'), function(x, i, j, ..., drop = FALSE) {
+setMethod('[', signature('Result', 'ANY', 'ANY'), function(x, i, j, ..., drop = FALSE) {
 	
 	if (!missing(i) && !x$get_option('finished') && 
 			i > x$get_affected_count()) {
@@ -343,59 +348,60 @@ setMethod('$', 'Result', function(x, name) {
 })
 
 #' Replace value(s) in the underlying data frame.
-`[<-.Result` <- function(result, i, j, value) {
-	if (!result$get_option('started')) 
-		stop(str_c(
-			'Attempting to modify result that has not been populated.',
-			'Either access the result to trigger fetching or get() manually.', 
-			sep = ' '
-		))
-		
-	if (missing(i)) 
-		i <- seq_len(nrow(result$result))
-	if (missing(j)) 
-		j <- seq_along(result$result)
-	
-	result$check_bounds(i, j)
-	i <- result$compute_offset_rows(i)
-	
-	if (result$get_option('mutable')) {
-		# This should check affected row count.
-		if (i[length(i)] > nrow(result$result)) {
+setMethod('[<-', 'Result', function(x, i, j, value) {
+		if (!x$get_option('started')) 
+			stop(str_c(
+				'Attempting to modify x that has not been populated.',
+				'Either access the x to trigger fetching or get() manually.', 
+				sep = ' '
+			))
 			
+		if (missing(i)) 
+			i <- seq_len(nrow(x$result))
+		if (missing(j)) 
+			j <- seq_along(x$result)
+		
+		x$check_bounds(i, j)
+		i <- x$compute_offset_rows(i)
+		
+		if (x$get_option('mutable')) {
+			# This should check affected row count.
+			if (i[length(i)] > nrow(x$result)) {
+				
+			}
+			keys <- x$result[i, x$introspected$.key, drop = FALSE]
 		}
-		keys <- result$result[i, result$introspected$.key, drop = FALSE]
-	}
-	
-	# result$result[]?
-	result$result <- `[<-.data.frame`(result$result, i, j, value)
-	
-	if (result$get_option('mutable')) {
-		if (i[length(i)] > nrow(result$result)) {
-			# PendingInsert: keep track of the indices and force 
-			# flushing when new result is fetched if retain is false.
-		} else {
-			for (k in seq_along(i)) {
-				update <- UpdateStatement$new()
-				update$update(result$introspected$as_table())
-				
-				for (l in j) 
-					update$set(
-						result$introspected$.fields[[l]]$as_field() == 
-						result$result[i[k], j]
-					)
-				
-				for (l in result$introspected$.key)
-					update$where(
-						result$introspected$.fields[[l]]$as_field() == keys[k, l]
-					)
-				
-				result$pending <- c(result$pending, update)
+		
+		# x$result[]?
+		x$result <- `[<-.data.frame`(x$result, i, j, value)
+		
+		if (x$get_option('mutable')) {
+			if (i[length(i)] > nrow(x$result)) {
+				# PendingInsert: keep track of the indices and force 
+				# flushing when new result is fetched if retain is false.
+			} else {
+				for (k in seq_along(i)) {
+					update <- UpdateStatement$new()
+					update$update(x$introspected$as_table())
+					
+					for (l in j) 
+						update$set(
+							x$introspected$.fields[[l]]$as_field() == 
+							x$result[i[k], j]
+						)
+					
+					for (l in x$introspected$.key)
+						update$where(
+							x$introspected$.fields[[l]]$as_field() == keys[k, l]
+						)
+					
+					x$pending <- c(x$pending, update)
+				}
 			}
 		}
+		x
 	}
-	result
-}
+)
 #' \code{\link{rbind}} rows to a \code{\link{Result}} object, 
 #' adding them to it's list of pending mutations.
 rbind.Result <- function(result, ..., deparse.level = 1) {
@@ -439,14 +445,21 @@ setMethod('print', 'Result', function(x, nrows = 10, ...) {
 	cat('.\n', sep = '')
 })
 
+#' Nicely format a \code{\link{Result}} object, 
+#' displaying state and the underlying result.
+#' 
+#' @param x a \code{\link{Result}} object
+#' @return \code{NULL}, invisibly.
 setMethod('show', 'Result', function(object) print(object))
 
 #' Get the dimensions of a \code{\link{Result}} object.
+#' 
+#' @param x a \code{\link{Result}} object
 #' @return the dimensions (number of rows and columns) of the result.
-#' @name dim
-#' @aliases dim,Result-method
-#' @docType methods
-#' @rdname dim,Result-method
-#' @export
 setMethod('dim', 'Result', function(x) c(nrow(x$result), ncol(x$result)))
+
+#' Get the number of columns of a \code{\link{Result}} object.
+#' 
+#' @param x a \code{\link{Result}} object
+#' @return the number of columns.
 setMethod('length', 'Result', function(x) length(x$result))

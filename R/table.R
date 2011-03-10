@@ -116,6 +116,10 @@ Table <- setRefClass('Table',
 
 #' When extracting an \code{\link{IntrospectedField}} object from this table, 
 #' return the corresponding \code{\link{Field}} object.
+#' @name $,IntrospectedTable-method
+#' @aliases $
+#' @docType methods
+#' @export
 setMethod('$', 'IntrospectedTable', function(x, name) {
 	# TODO: we get different results from .field and from direct access.
 	if (name %in% names(x[['.fields']])) x[['.fields']][[name]]$as_field()
@@ -124,9 +128,9 @@ setMethod('$', 'IntrospectedTable', function(x, name) {
 
 #' Introspect a database table and return an object representing that table.
 #' 
-#' @param session the \code{\link{Session}} object.
-#' @param table the name of the table.
-#' @param database the name of the database this table resides in. 
+#' @param session a \code{\link{Session}} object
+#' @param table name of the table
+#' @param database name of the database this table resides in. 
 #' 	 If \code{NULL}, this will be taken from the database name of 
 #'   the \code{\link{Session}} object.
 #' @return a \code{\link{Table}} object representing this database table.

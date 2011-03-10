@@ -27,6 +27,12 @@ TupleElement <- setRefClass('TupleElement',
 		}
 	)
 )
+#' Wrap the given objects in parentheses.
+#' 
+#' @param ... the objects to be wrapped
+#' @return a \code{\link{TupleElement}} containing the given objects.
+#' 
+#' @export
 tuple <- function(...) TupleElement$new(...)
 
 

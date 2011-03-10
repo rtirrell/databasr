@@ -265,9 +265,10 @@ UpdateClause <- setRefClass('UpdateClause',
 		
 		#' Add a child to this clause.
 		#' 
-		#' Need to think a bit on whether we ever really need to keep tables. One situation
-		#' where that might be simplest is if a clause has extensive nesting - then a naive
-		#' \code{\link{find_children}} would incorrectly return those.
+		#' Need to think a bit on whether we ever really need to keep tables. 
+		#' One situation where that might be simplest is if a clause has 
+		#' extensive nesting - then a naive \code{\link{find_children}} 
+		#' would incorrectly return those.
 		add_child = function(child, name, after) {
 			if (inherits(child, 'IntrospectedTable')) {
 				callSuper(child$as_table(), after = 0)
