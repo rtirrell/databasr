@@ -63,7 +63,7 @@ SelectClause <- setRefClass('SelectClause',
 		
 		#' Add a child to this clause's children.
 		#' 
-		#' There are three cases depending on the class of the arguments.
+		#' There are four cases depending on the class of the arguments.
 		add_child = function(child, name, after)  {
 			fields <- list()
 			
@@ -118,31 +118,25 @@ FromClause <- setRefClass('FromClause',
 			callSuper(...)
 		},
 		
-		# Accepts only Tables.
+		#' Add a table to this \code{FROM} clause.
 		add_child = function(child, name, after) {
 			add_table(child)
 			callSuper(child$as_table())
 		},
 		
-		# Add any table named in select that is not in joins to the from clause. 
-		# We may also want to look at the where clause.
+		#' Add any table named in the \code{SELECT} or \code{WHERE} clauses
+		#' to the \code{FROM} clause.
+		#' 
+		#' @return \code{NULL}, invisibly.
 		prepare = function() {
-			table.names <- get_table_names()
-			if (!is.null(.parent$.children$joins))
-				table.names <- c(table.names, .parent$.children$joins$get_table_names())
-
 			clause.tables <- .parent$.children$select$tables
 			
 			if (!is.null(.parent$.children$where))
 				clause.tables <- c(clause.tables, .parent$.children$where$tables)
 			
-			for (clause.table in clause.tables) {
-				if (!clause.table$get_name() %in% table.names) {
-					if (!has_table(clause.table)) {
-						add_child(clause.table)
-					}
-				}
-			}
+			for (clause.table in clause.tables) 
+				if (!has_table(clause.table)) 
+					add_child(clause.table)
 			
 			callSuper()
 		}
@@ -151,8 +145,8 @@ FromClause <- setRefClass('FromClause',
 
 #' Represents a JOIN clause.
 #' 
-#' TODO: need to think about how to handle self-joins automatically. Lots of things won't work
-#' as-is.
+#' TODO: need to think about how to handle self-joins automatically. 
+#' Lots of things won't work as-is.
 JoinClause <- setRefClass('JoinClause',
 	contains = c(
 		'Clause'
@@ -162,28 +156,10 @@ JoinClause <- setRefClass('JoinClause',
 	),
 	methods = list(
 		initialize = function(...) {
+			initFields(type = NULL)
 			callSuper(...)
 		},
 		
-		#' Add children to this JOIN clause.
-		#' 
-		#' This sets the type based on the last element we add.
-		#' @param ... arguments to add as children.
-		#' @return \code{.self}
-		add_children = function(...) {
-			args <- list(...)
-			if (inherits(args[[1]], 'SelectableElement')) {
-				table <- args[[1]]$find_children('Field', TRUE)[[1]]$table
-				add_table(table)
-				# TODO: this should probably be added in prepare. 
-				# At that point, we can tell if this is the correct table 
-				# (think JOIN ON CONCAT(other.table, this.table)).
-				add_child(table$as_table(), 0)
-			}
-			callSuper(...)
-		},
-			
-			
 		#' Add a child to this JOIN clause.
 		#' 
 		#' Shorthand syntax for JOIN USING gives only fields. In this case, we take the table
@@ -196,14 +172,37 @@ JoinClause <- setRefClass('JoinClause',
 		#' @param after index after which to add the child.
 		#' @return \code{.self}
 		add_child = function(child, name, after) {
+			# Adding a child to a position occurs only in prepare, we want to bypass
+			# the rest of this logic.
+			if (!missing(after))
+				return(callSuper(child, name, after))
+			
 			if (inherits(child, 'IntrospectedTable')) {
-				type <<- 'NATURAL JOIN'
+				if (is.null(type))
+					type <<- 'NATURAL JOIN'
+
 				add_table(child)
 				child <- child$as_table()
-			} else if (inherits(child, 'Field')) {
+			} else if (inherits(child, 'Field') && is.null(type))
 				type <<- 'JOIN USING'
-			} else type <<- 'JOIN ON'
+			else if (is.null(type))
+				type <<- 'JOIN ON'
+
+			fields <- child$find_children('Field', TRUE)
+			for (field in fields)
+				add_table(field$table)
+			
 			callSuper(child)
+		},
+		
+		prepare = function() {
+			for (table in tables) {
+				if (!inherits(.children[[1]], 'IntrospectedTable') && 
+						!.parent$.parent$.children$from$has_table(table))
+					add_child(table$as_table(), after = 0)
+				
+			}
+			callSuper()
 		}
 	)
 )

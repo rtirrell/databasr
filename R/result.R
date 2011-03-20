@@ -47,8 +47,8 @@ Result <- setRefClass('Result',
 		#'   should be considered mutable.
 		#' 
 		#' @return \code{.self}
-		initialize = function(session, statement, 
-													fetch.size = NULL, mutable = FALSE) {
+		initialize = function(session, statement, fetch.size = NULL, 
+				mutable = FALSE, flush.mode = NULL, time = NULL, count = NULL) {
 			initFields(
 				session = session, 
 				connection = NULL, 
@@ -62,6 +62,15 @@ Result <- setRefClass('Result',
 			
 			if (is.null(fetch.size)) 
 				fetch.size <- session$get_option('fetch.size')
+			
+			if (!is.null(flush.mode)) {
+				if (flush.mode == 'time')
+					set_option(flush.time = time)
+				else if (flush.mode == 'count')
+					set_option(flush.count = count)
+				else
+					stop(sprintf('unknown flush mode %s specified.', flush.mode))
+			}
 			
 			set_options(
 				fetch.size = fetch.size, 
@@ -132,7 +141,7 @@ Result <- setRefClass('Result',
 		#' @return the number of rows affected by this query, a numeric vector
 		#'   of length one.
 		get_affected_count = function() {
-			if (get_option('finished')) 
+			if (is_finished()) 
 				get_option('affected.row.count')
 			else if (get_option('started')) 
 				dbGetRowCount(result.set)
@@ -190,6 +199,10 @@ Result <- setRefClass('Result',
 			length(pending) != 0
 		},
 		
+		is_finished = function() {
+			get_option('finished')
+		},
+		
 		#' Update information on the result set and return connections.
 		#' 
 		#' @return \code{.self}
@@ -241,16 +254,12 @@ Result <- setRefClass('Result',
 				stop.message <- NULL
 				statement$prepare()
 				
-				from.clause <- statement$.children$from
-				join.clauses <- statement$.children$joins
-					
-				if (!is.null(from.clause) && length(from.clause$tables) > 1) 
-					stop.message <- 'Cannot alter result FROM multiple tables.'
+				if (length(statement$.children$select$tables) > 1) {
+					stop('cannot alter result from multiple tables.')
+					statement$restore()
+				}
 
-				else if (!is.null(join.clauses) && join.clauses$has_children())
-					stop.message <- 'Cannot alter JOIN result.'
-
-				introspected <<- from.clause$tables[[1]]
+				introspected <<- statement$.children$select$tables[[1]]
 				
 				table.keys <- vapply(
 					introspected$.fields[introspected$.key], 
@@ -265,13 +274,10 @@ Result <- setRefClass('Result',
 				)
 				
 				if (length(introspected$.key) == 0 || 
-						!have_same_elements(table.keys, select.keys))
-					stop.message <- 'Cannot alter result lacking complete primary key.'
-
-				statement$restore()
-				
-				if (!is.null(stop.message)) 
-					stop(stop.message)
+						!have_same_elements(table.keys, select.keys)) {
+					stop('cannot alter result lacking complete primary key.')
+					statement$restore()
+				}
 				
 				set_options(mutable = TRUE)
 			}
@@ -318,14 +324,9 @@ Result <- setRefClass('Result',
 #' Extract values from the underlying data frame.
 #' 
 #' @param ... arguments passed to \code{[.data.frame]}.
-#' 
-#' @name [,Result-method
-#' @aliases [
-#' @docType methods
-#' @export
-setMethod('[', signature('Result', 'ANY', 'ANY'), function(x, i, j, ..., drop = FALSE) {
+setMethod('[', 'Result', function(x, i, j, ..., drop = FALSE) {
 	
-	if (!missing(i) && !x$get_option('finished') && 
+	if (!missing(i) && !x$is_finished() && 
 			i > x$get_affected_count()) {
 		delta <- max(
 			x$get_option('fetch.size'), i - x$get_affected_count()
@@ -376,6 +377,7 @@ setMethod('[<-', 'Result', function(x, i, j, value) {
 		x$result <- `[<-.data.frame`(x$result, i, j, value)
 		
 		if (x$get_option('mutable')) {
+					
 			if (i[length(i)] > nrow(x$result)) {
 				# PendingInsert: keep track of the indices and force 
 				# flushing when new result is fetched if retain is false.
@@ -397,6 +399,20 @@ setMethod('[<-', 'Result', function(x, i, j, value) {
 					
 					x$pending <- c(x$pending, update)
 				}
+			}
+			if (!is.null(x$get_option('flush.time'))) {
+				if (is.null(x$get_option('last.flush')))
+					x$set_option(flushed = as.numeric(Sys.time()))
+				else {
+					delta <- as.numeric(Sys.time()) - x$get_option('last.flush')
+					if (delta >= x$get_option('flush.time'))
+						x$flush()
+				}
+			}
+			
+			if (!is.null(x$get_option('flush.count'))) {
+				if (x$get_option('flush.count') >= length(x$pending))
+					x$flush()
 			}
 		}
 		x
@@ -435,7 +451,7 @@ setMethod('print', 'Result', function(x, nrows = 10, ...) {
 		}
 	}
 	cat(
-		'* completed: ', x$get_option('finished'), 
+		'* completed: ', x$is_finished(), 
 		', affected: ', x$get_affected_count(), ' rows', sep = ''
 	)
 	

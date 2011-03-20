@@ -228,16 +228,13 @@ SelectStatement <- setRefClass('SelectStatement',
 		#' @return \code{NULL}, invisibly.
 		prepare = function() {
 			unprepared.children <<- .children
-			prepared.children <- list()
-			
 			for (clause.name in .CLAUSE.ORDER) {
 				unprepared.child <- unprepared.children[[clause.name]]
 				if (!is.null(unprepared.child)) 
-					prepared.children[[clause.name]] <- unprepared.child$prepare()
+					.children[[clause.name]] <<- unprepared.child$prepare()
 			}
 			
-			.children <<- prepared.children
-			invisible(NULL)
+			invisible()
 		},		
 		
 		#' Restore this statement to the state it was in 
@@ -246,7 +243,7 @@ SelectStatement <- setRefClass('SelectStatement',
 		#' @return \code{NULL}, invisibly.
 		restore = function() {
 			.children <<- unprepared.children
-			invisible(NULL)
+			invisible()
 		},
 		
 		#' If this statement has no session, then a session must be the 

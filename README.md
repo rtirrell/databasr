@@ -74,10 +74,6 @@ probably a moving target.
 * Adopt a unified approach to aliasing. 
   This is difficult given lack of multiple inheritance or mixins.
   
-* Some kind of flush-by-interval or flush-by-count system. 
-  This is not too hard to actually implement, but to do well requires 
-  some more thought.
- 
 * Balance of sanity-checking at generation or compilation time versus at 
   execution time (i.e. "You have an error in your SQL syntax").
   
@@ -97,10 +93,13 @@ probably a moving target.
 
 * Compilation of aliased operators.
 
-* Logarithms.
-
 * Reconnecting to servers (connections already work, but a connection is
   only expired manually as far as I understand).
+  
+* Flush modes.
+
+* 'Out-of-order' joins, where first table used in a JOIN is
+  first table used in SELECT.
 
 > dbGetException(s)
 $errorNum

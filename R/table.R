@@ -57,10 +57,7 @@ IntrospectedTable <- setRefClass('IntrospectedTable',
 				other$.fields, function(f) f$name, character(1)
 			)
 			
-			if (have_same_elements(field.names, other.field.names)) 
-				TRUE
-			else 
-				FALSE
+			have_same_elements(field.names, other.field.names)
 		},
 		
 		as_table = function() {

@@ -55,10 +55,7 @@ setMethod('log2', 'SelectableElement', function(x) {
 })
 
 #' Select a substring of a field or expression.
-#' @docType methods
-#' @export
-setMethod('[', c('SelectableElement', 'ANY', 'ANY'),
-	function(x, i, j, drop = FALSE) {
+setMethod('[', 'SelectableElement', function(x, i, j, drop = FALSE) {
 		if (!inherits(x$type, 'StringType')) {
 			# Indexing a non-string field with `[` is fine in SQL, 
 			# but may not be the user's intention.
